@@ -9,8 +9,9 @@ export const config = {
     jwtSecret: process.env.JWT_SECRET || "medcare-dev-secret-change-in-production",
   },
 
-  /** OAuth — wire providers when client IDs/secrets are set */
+  /** OAuth — real providers when keys set; demo mode works without keys */
   oauth: {
+    demoMode: process.env.OAUTH_DEMO_MODE !== "false",
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
@@ -21,7 +22,12 @@ export const config = {
       teamId: process.env.APPLE_TEAM_ID || "",
       keyId: process.env.APPLE_KEY_ID || "",
       privateKey: process.env.APPLE_PRIVATE_KEY || "",
-      enabled: Boolean(process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID),
+      enabled: Boolean(
+        process.env.APPLE_CLIENT_ID &&
+          process.env.APPLE_TEAM_ID &&
+          process.env.APPLE_KEY_ID &&
+          process.env.APPLE_PRIVATE_KEY
+      ),
     },
     microsoft: {
       clientId: process.env.MICROSOFT_CLIENT_ID || "",
@@ -95,10 +101,17 @@ export const config = {
 export function integrationStatus() {
   return {
     oauth: {
-      google: config.oauth.google.enabled,
-      apple: config.oauth.apple.enabled,
-      microsoft: config.oauth.microsoft.enabled,
-      line: config.oauth.line.enabled,
+      google: config.oauth.google.enabled || config.oauth.demoMode,
+      apple: config.oauth.apple.enabled || config.oauth.demoMode,
+      microsoft: config.oauth.microsoft.enabled || config.oauth.demoMode,
+      line: config.oauth.line.enabled || config.oauth.demoMode,
+      demoMode: config.oauth.demoMode,
+      live: {
+        google: config.oauth.google.enabled,
+        apple: config.oauth.apple.enabled,
+        microsoft: config.oauth.microsoft.enabled,
+        line: config.oauth.line.enabled,
+      },
     },
     ai: config.ai.enabled ? "openai" : "local-rules",
     payments: config.payments.enabled ? "stripe" : "mock",

@@ -10,7 +10,10 @@ export const PLATFORM_TAGLINE = "Let's save the world — integrated healthcare 
 
 export const NAV_MODULES: NavModule[] = [
   { href: "/search", label: "Search", group: "Care", featureKey: "search" },
+  { href: "/recommendations", label: "Recommendations", group: "Care", featureKey: "recommendations" },
   { href: "/ai-consultant", label: "AI Consultant", group: "Care", featureKey: "ai_consultant" },
+  { href: "/verification", label: "Identity Verification", group: "Care", featureKey: "auth" },
+  { href: "/security", label: "Security (2FA / Biometric)", group: "Care", featureKey: "auth" },
   { href: "/appointments", label: "Appointments", group: "Care", featureKey: "appointments" },
   { href: "/telemedicine", label: "Telemedicine", group: "Care", featureKey: "telemedicine" },
   { href: "/pharmacy", label: "Pharmacy", group: "Care", featureKey: "pharmacy" },
@@ -19,6 +22,9 @@ export const NAV_MODULES: NavModule[] = [
   { href: "/corporate", label: "Corporate Dashboard", group: "Operations", featureKey: "corporate_dashboard" },
   { href: "/analytics", label: "Analytics", group: "Operations", featureKey: "analytics" },
   { href: "/ehr", label: "Health Record", group: "Records", featureKey: "ehr" },
+  { href: "/knowledge", label: "Knowledge Center", group: "Community", featureKey: "education" },
+  { href: "/education", label: "Health Education", group: "Community", featureKey: "education" },
+  { href: "/faq", label: "FAQs", group: "Community", featureKey: "education" },
   { href: "/blog", label: "Medical Blog", group: "Community", featureKey: "blog" },
   { href: "/community", label: "Community", group: "Community", featureKey: "community" },
   { href: "/reviews", label: "Reviews", group: "Community", featureKey: "reviews" },

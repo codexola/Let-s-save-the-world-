@@ -61,8 +61,9 @@ export function hasPermission(
 export const PLATFORM_FEATURES = [
   { key: "auth", name: "Authentication", category: "core", description: "Email, OAuth, 2FA, biometric login" },
   { key: "registration", name: "Registration", category: "core", description: "User registration with subscription codes" },
-  { key: "search", name: "Search Engine", category: "core", description: "Disease, provider, medication search" },
+  { key: "search", name: "Search Engine", category: "core", description: "Faceted search: disease, symptoms, medication, providers, insurance, location, distance, price, rating, experience, language, availability, gender, department, treatments, online, home visit, emergency" },
   { key: "ai_consultant", name: "AI Medical Consultant", category: "ai", description: "Symptom analysis and triage" },
+  { key: "recommendations", name: "Recommendation Engine", category: "ai", description: "Personalized provider ranking from profile, history, reviews, distance, AI scoring" },
   { key: "marketplace", name: "Medication Marketplace", category: "pharmacy", description: "Medicine profiles and price comparison" },
   { key: "telemedicine", name: "Telemedicine", category: "care", description: "Video consultations" },
   { key: "appointments", name: "Appointments", category: "care", description: "Book, cancel, reschedule" },

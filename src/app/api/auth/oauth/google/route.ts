@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-import { config } from "@/lib/config";
+import { NextRequest, NextResponse } from "next/server";
+import { makeOAuthHandlers } from "@/lib/oauth-handlers";
 
-export async function GET() {
-  if (!config.oauth.google.enabled) {
-    return NextResponse.json({ error: "Google OAuth not configured", enabled: false }, { status: 503 });
-  }
-  return NextResponse.json({ error: "Set redirect URI", enabled: true });
+const handlers = makeOAuthHandlers("google");
+
+export async function GET(req: NextRequest) {
+  return handlers.GET(req);
 }

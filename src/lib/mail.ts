@@ -7,12 +7,15 @@ export async function sendEmail(opts: {
   subject: string;
   body: string;
   userId?: string;
+  kind?: string;
+  channel?: string;
 }) {
   const notification = await prisma.notification.create({
     data: {
       email: opts.to,
       userId: opts.userId,
-      channel: "email",
+      channel: opts.channel || "email",
+      kind: opts.kind || "general",
       subject: opts.subject,
       body: opts.body,
     },

@@ -1,0 +1,8 @@
+import { NextRequest } from "next/server";
+import { makeOAuthHandlers } from "@/lib/oauth-handlers";
+
+const handlers = makeOAuthHandlers("line");
+
+export async function GET(req: NextRequest) {
+  return handlers.GET(req);
+}

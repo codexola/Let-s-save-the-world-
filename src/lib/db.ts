@@ -24,10 +24,15 @@ function resolveDatabaseUrl(): string {
 
   const envUrl = process.env.DATABASE_URL;
   if (envUrl && envUrl.startsWith("file:")) {
-    const rel = envUrl.replace(/^file:/, "").replace(/^\.\//, "");
-    const absolute = path.isAbsolute(rel)
-      ? rel
-      : path.join(process.cwd(), rel);
+    let rel = envUrl.replace(/^file:/, "");
+    // Prisma CLI resolves SQLite paths relative to prisma/schema.prisma.
+    // Keep the app on the same file: file:./dev.db → <cwd>/prisma/dev.db
+    if (rel === "./dev.db" || rel === "dev.db") {
+      rel = path.join("prisma", "dev.db");
+    } else {
+      rel = rel.replace(/^\.\//, "");
+    }
+    const absolute = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel);
     return `file:${absolute}`;
   }
 

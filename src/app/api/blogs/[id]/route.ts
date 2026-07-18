@@ -12,7 +12,7 @@ export async function GET(
   const post = await prisma.blogPost.findUnique({
     where: { id },
     include: {
-      author: { select: { id: true, name: true, photoUrl: true, bio: true } },
+      author: { select: { id: true, name: true, photoUrl: true, bio: true, role: true } },
       views: {
         take: 5,
         orderBy: { createdAt: "desc" },
@@ -29,6 +29,9 @@ export async function GET(
           },
         },
       },
+      likes: session ? { where: { userId: session.id }, select: { id: true } } : false,
+      bookmarks: session ? { where: { userId: session.id }, select: { id: true } } : false,
+      _count: { select: { likes: true, bookmarks: true, comments: true } },
     },
   });
 
@@ -49,5 +52,14 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({ post, mutualContext });
+  return NextResponse.json({
+    post: {
+      ...post,
+      likedByMe: Array.isArray(post.likes) ? post.likes.length > 0 : false,
+      bookmarkedByMe: Array.isArray(post.bookmarks) ? post.bookmarks.length > 0 : false,
+      likes: undefined,
+      bookmarks: undefined,
+    },
+    mutualContext,
+  });
 }

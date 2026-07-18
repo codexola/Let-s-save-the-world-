@@ -9,6 +9,10 @@ type Review = {
   rating: number;
   comment: string | null;
   targetType: string;
+  targetId?: string;
+  verified?: boolean;
+  fraudScore?: number;
+  spamFlag?: boolean;
   author: { id: string; name: string; photoUrl?: string | null };
 };
 
@@ -18,6 +22,8 @@ export default function ReviewsBrowsePage() {
   const [mutual, setMutual] = useState<
     Array<{ partner: { id: string; name: string; photoUrl?: string | null }; given: Review; received: Review }>
   >([]);
+  const [targetTypes, setTargetTypes] = useState<string[]>([]);
+  const [targetType, setTargetType] = useState("doctor");
   const [targetId, setTargetId] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -32,6 +38,7 @@ export default function ReviewsBrowsePage() {
         setGiven(d.given || []);
         setReceived(d.received || []);
         setMutual(d.mutualReviews || []);
+        setTargetTypes(d.targetTypes || []);
       });
   }
 
@@ -46,14 +53,17 @@ export default function ReviewsBrowsePage() {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetType: "user", targetId, rating, comment }),
+      body: JSON.stringify({ targetType, targetId, rating, comment }),
     });
     const data = await res.json();
     if (!res.ok) {
-      setSubmitErr(data.error || "Failed — sign in required");
+      setSubmitErr(data.error || "Failed — sign in & verified appointment required");
       return;
     }
-    setSubmitMsg("Review submitted");
+    setSubmitMsg(
+      data.message +
+        (data.fraudScore != null ? ` (fraud score ${data.fraudScore})` : "")
+    );
     setTargetId("");
     setComment("");
     load();
@@ -63,11 +73,22 @@ export default function ReviewsBrowsePage() {
     <PageShell
       eyebrow="Reviews"
       title="Browse & submit reviews"
-      description="Verified reviews and mutual review pairs across the platform."
+      description="Patients → doctors/hospitals/pharmacies/nurses · companies ↔ hospitals · doctors → patients. Verified appointments only · anti-spam · AI fraud detection."
     >
       <form className="panel form-narrow" onSubmit={submitReview} style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ marginTop: 0 }}>Submit a review</h2>
-        <label className="label">Target user ID</label>
+        <h2 style={{ marginTop: 0 }}>Submit a verified review</h2>
+        <label className="label">Target type</label>
+        <select className="input" value={targetType} onChange={(e) => setTargetType(e.target.value)}>
+          {(targetTypes.length
+            ? targetTypes
+            : ["doctor", "hospital", "pharmacy", "nurse", "patient", "company", "medicine", "user"]
+          ).map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <label className="label">Target ID (user / profile / medicine id)</label>
         <input className="input" value={targetId} onChange={(e) => setTargetId(e.target.value)} required />
         <label className="label">Rating (1–5)</label>
         <input
@@ -83,7 +104,9 @@ export default function ReviewsBrowsePage() {
         <textarea className="input" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
         {submitErr && <p className="error-text">{submitErr}</p>}
         {submitMsg && <p className="muted">{submitMsg}</p>}
-        <button className="btn btn-primary form-submit" type="submit">Submit review</button>
+        <button className="btn btn-primary form-submit" type="submit">
+          Submit review
+        </button>
       </form>
 
       {mutual.length > 0 && (
@@ -107,7 +130,11 @@ export default function ReviewsBrowsePage() {
           {given.length === 0 && <p className="muted">Sign in to see your reviews.</p>}
           {given.map((r) => (
             <div key={r.id} className="panel" style={{ marginBottom: "0.5rem" }}>
-              {"★".repeat(r.rating)} — {r.comment}
+              <span className="badge">{r.targetType}</span>{" "}
+              {"★".repeat(r.rating)}
+              {r.verified && <span className="badge">verified</span>}
+              {r.spamFlag && <span className="badge">flagged</span>}
+              <p>{r.comment}</p>
             </div>
           ))}
         </div>

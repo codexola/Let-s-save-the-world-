@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SubscriptionPlan } from "@prisma/client";
-import { getSession, requirePermission, audit } from "@/lib/auth";
+import { getSession, requirePermission, requireSession, audit } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS, SUBSCRIPTION_PLANS } from "@/lib/permissions";
 import {
   purchaseSubscription,
   adminGrantSubscription,
   reconcileSubscriptionPayment,
+  renewSubscription,
+  cancelSubscription,
 } from "@/lib/subscriptions";
 
 export async function GET() {
@@ -30,7 +32,17 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ subscriptions });
+  const invoices = await prisma.invoice.findMany({
+    where: { userId: session.id, description: { contains: "Subscription" } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  return NextResponse.json({
+    subscriptions,
+    invoices,
+    plans: Object.values(SUBSCRIPTION_PLANS),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -39,19 +51,39 @@ export async function POST(req: NextRequest) {
     const action = body.action as string;
 
     if (action === "purchase") {
+      const session = await getSession();
       const result = await purchaseSubscription({
-        email: body.email,
+        email: body.email || session?.email,
         plan: body.plan as SubscriptionPlan,
-        userId: body.userId,
-        name: body.name,
+        userId: body.userId || session?.id,
+        name: body.name || session?.name,
         paymentMethod: body.paymentMethod || "card",
+        employeeCount: body.employeeCount,
+        trial: Boolean(body.trial),
+        couponCode: body.couponCode,
       });
       return NextResponse.json({
         ok: true,
         subscriptionId: result.subscription.id,
         code: result.code,
-        message: "Payment received. Registration code sent to email inbox.",
+        priceYen: result.priceYen,
+        trial: result.trial,
+        message: result.trial
+          ? "14-day free trial started. Registration code sent to email inbox."
+          : "Payment received. Registration code sent to email inbox.",
       });
+    }
+
+    if (action === "renew") {
+      const session = await requireSession();
+      const updated = await renewSubscription(String(body.subscriptionId), session.id);
+      return NextResponse.json({ ok: true, subscription: updated });
+    }
+
+    if (action === "cancel") {
+      const session = await requireSession();
+      const updated = await cancelSubscription(String(body.subscriptionId), session.id);
+      return NextResponse.json({ ok: true, subscription: updated });
     }
 
     if (action === "admin_grant") {
@@ -74,18 +106,19 @@ export async function POST(req: NextRequest) {
       const user = await prisma.user.findUnique({ where: { email: body.email } });
       if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
       const plan = body.plan as SubscriptionPlan;
-      const prices: Record<string, number> = {
-        INDIVIDUAL: 1000,
-        PREMIUM_FEATURES: 500,
-        CORPORATE: 400,
-        CORPORATE_PREMIUM: 200,
-      };
+      const planMeta = Object.values(SUBSCRIPTION_PLANS).find((p) => p.plan === plan);
+      const employees = Math.max(1, Number(body.employeeCount) || 1);
+      const priceYen = planMeta
+        ? planMeta.perEmployee
+          ? planMeta.priceYen * employees
+          : planMeta.priceYen
+        : 1000;
       const sub = await prisma.subscription.create({
         data: {
           userId: user.id,
           plan,
           status: "PENDING",
-          priceYen: prices[plan] || 1000,
+          priceYen,
           paid: false,
         },
       });

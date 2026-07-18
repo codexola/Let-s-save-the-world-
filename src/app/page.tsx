@@ -6,6 +6,7 @@ import { getTopBlogPosts } from "@/lib/blog";
 
 const ARCHITECTURE_MODULES = [
   { href: "/search", label: "Search", group: "Care" },
+  { href: "/recommendations", label: "Recommendations", group: "Care" },
   { href: "/ai-consultant", label: "AI Consultant", group: "Care" },
   { href: "/appointments", label: "Appointments", group: "Care" },
   { href: "/telemedicine", label: "Telemedicine", group: "Care" },

@@ -60,20 +60,24 @@ enum AppointmentStatus {
 }
 
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
-  passwordHash     String
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String?
   name             String
-  role             Role     @default(PATIENT)
+  role             Role      @default(PATIENT)
   phone            String?
   photoUrl         String?
   bio              String?
-  locale           String   @default("ja")
-  twoFactorEnabled Boolean  @default(false)
-  verified         Boolean  @default(false)
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  locale           String    @default("ja")
+  gender           String?
+  dateOfBirth      DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  phoneVerified    Boolean   @default(false)
+  verified         Boolean   @default(false)
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   permissions         UserPermission[]
   patientProfile      PatientProfile?
@@ -110,6 +114,18 @@ model User {
   telemedicineSessionsPatient TelemedicineSession[] @relation("TelemedicinePatient")
   communityPosts             CommunityPost[]
   invoices                   Invoice[]
+  oauthAccounts              OAuthAccount[]
+  webAuthnCredentials        WebAuthnCredential[]
+  identityVerifications      IdentityVerification[]
+  followUpReminders          FollowUpReminder[]
+  hospitalConfirmationsGiven DoctorProfile[] @relation("HospitalConfirmer")
+  blogBookmarks              BlogBookmark[]
+  blogLikes                  BlogLike[]
+  marketplaceOrders          MarketplaceOrder[]
+  healthMetrics              HealthMetric[]
+  notificationPreference     NotificationPreference?
+  pushDevices                PushDevice[]
+  complaints                 Complaint[]
 }
 
 model Permission {
@@ -165,15 +181,27 @@ model Archive {
 }
 
 model PatientProfile {
-  id               String  @id @default(cuid())
-  userId           String  @unique
-  bloodType        String?
-  allergies        String?
-  medications      String?
-  insuranceInfo    String?
-  familyDoctor     String?
-  emergencyContact String?
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  bloodType             String?
+  allergies             String?
+  medications           String?
+  medicalHistory        String?
+  insuranceInfo         String?
+  familyDoctor          String?
+  emergencyContact      String?
+  favoriteHospitals     String?
+  favoriteDoctors       String?
+  paymentMethods        String?
+  incomeBracket         String?
+  preferredLanguage     String?
+  governmentId          String?
+  governmentIdType      String?
+  governmentIdDocument  String?
+  governmentIdVerified  Boolean @default(false)
+  faceImageUrl          String?
+  faceVerified          Boolean @default(false)
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DoctorProfile {
@@ -183,47 +211,92 @@ model DoctorProfile {
   nationalRegNumber   String?
   university          String?
   graduationYear      Int?
+  boardCertifications String?
   specialty           String?
   subspecialty        String?
+  clinicalExperience  String?
+  yearsExperience     Int?
+  treatmentMethods    String?
+  successRate         Float?
   hospitalAffiliation String?
   languages           String?
+  awards              String?
+  publications        String?
+  research            String?
   consultationFee     Int?
+  schedule            String?
+  onlineAvailable       Boolean @default(true)
+  offlineAvailable      Boolean @default(true)
+  verified              Boolean @default(false)
+  licenseVerified       Boolean @default(false)
+  govDbVerified         Boolean @default(false)
+  hospitalConfirmed     Boolean @default(false)
+  hospitalConfirmedById String?
+  licenseDocumentUrl    String?
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalConfirmer     User?   @relation("HospitalConfirmer", fields: [hospitalConfirmedById], references: [id])
+}
+
+model NurseProfile {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  licenseNumber       String?
+  nationalRegNumber   String?
+  university          String?
+  graduationYear      Int?
+  boardCertifications String?
+  specialty           String?
+  subspecialty        String?
+  clinicalExperience  String?
+  yearsExperience     Int?
+  treatmentMethods    String?
+  successRate         Float?
+  hospitalAffiliation String?
+  languages           String?
+  awards              String?
+  publications        String?
+  research            String?
+  consultationFee     Int?
+  schedule            String?
+  certifications      String?
+  clinicalSpecialties String?
+  shiftAvailability   String?
+  homeVisitAvailable  Boolean @default(false)
   onlineAvailable     Boolean @default(true)
   offlineAvailable    Boolean @default(true)
   verified            Boolean @default(false)
   user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model NurseProfile {
-  id                  String  @id @default(cuid())
-  userId              String  @unique
-  certifications      String?
-  clinicalSpecialties String?
-  shiftAvailability   String?
-  homeVisitAvailable  Boolean @default(false)
-  verified            Boolean @default(false)
-  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 model HospitalProfile {
-  id                   String  @id @default(cuid())
-  userId               String  @unique
-  name                 String
-  departments          String?
-  equipment            String?
-  operatingHours       String?
-  emergencyAvailable   Boolean @default(false)
-  icuBeds              Int     @default(0)
-  totalBeds            Int     @default(0)
-  operatingRooms       Int     @default(0)
-  parking              Boolean @default(false)
-  acceptedInsurance    String?
-  languages            String?
-  ambulance            Boolean @default(false)
-  accreditation        String?
-  businessRegistration String?
-  verified             Boolean @default(false)
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                         String  @id @default(cuid())
+  userId                     String  @unique
+  name                       String
+  departments                String?
+  equipment                  String?
+  operatingHours             String?
+  emergencyAvailable         Boolean @default(false)
+  icuBeds                    Int     @default(0)
+  totalBeds                  Int     @default(0)
+  operatingRooms             Int     @default(0)
+  parking                    Boolean @default(false)
+  acceptedInsurance          String?
+  languages                  String?
+  pharmacyOnSite             Boolean @default(false)
+  ambulance                  Boolean @default(false)
+  accreditation              String?
+  businessRegistration       String?
+  medicalInstitutionReg      String?
+  businessRegVerified        Boolean @default(false)
+  medicalInstitutionVerified Boolean @default(false)
+  treatmentMethods           String?
+  address                    String?
+  latitude                   Float?
+  longitude                  Float?
+  doctorsList                String?
+  nursesList                 String?
+  verified                   Boolean @default(false)
+  user                       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PharmacyProfile {
@@ -233,6 +306,7 @@ model PharmacyProfile {
   deliveryAvailable   Boolean    @default(true)
   pickupAvailable     Boolean    @default(true)
   prescriptionSupport Boolean    @default(true)
+  discounts           String?
   user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   medicines           Medicine[]
 }
@@ -243,10 +317,23 @@ model CompanyProfile {
   name                 String
   taxId                String?
   businessRegistration String?
+  businessRegVerified  Boolean @default(false)
+  taxIdVerified        Boolean @default(false)
   employeeCount        Int     @default(0)
+  employeesJson        String?
+  healthCheckSchedule  String?
+  medicalReports       String?
+  healthCampaigns      String?
+  vaccinationPrograms  String?
+  insuranceSupport     String?
   verified             Boolean @default(false)
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employees            CorporateEmployee[]
+  campaigns            CorporateCampaign[]
+  certificates         MedicalCertificate[]
+  sickLeaves           SickLeaveRecord[]
 }
+
 
 model Subscription {
   id               String             @id @default(cuid())
@@ -298,6 +385,7 @@ model Notification {
   userId    String?
   email     String
   channel   String   @default("email")
+  kind      String   @default("general")
   subject   String
   body      String
   read      Boolean  @default(false)
@@ -306,17 +394,21 @@ model Notification {
 }
 
 model Appointment {
-  id          String            @id @default(cuid())
-  patientId   String
-  doctorId    String?
-  hospitalId  String?
-  type        AppointmentType
-  status      AppointmentStatus @default(BOOKED)
-  scheduledAt DateTime
-  notes       String?
-  createdAt   DateTime          @default(now())
-  patient     User              @relation("PatientAppointments", fields: [patientId], references: [id])
-  doctor      User?             @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  id                   String            @id @default(cuid())
+  patientId            String
+  doctorId             String?
+  hospitalId           String?
+  type                 AppointmentType
+  status               AppointmentStatus @default(BOOKED)
+  scheduledAt          DateTime
+  notes                String?
+  recurrenceRule       String?
+  recurrenceParentId   String?
+  queuePosition        Int?
+  estimatedWaitMinutes Int?
+  createdAt            DateTime          @default(now())
+  patient              User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor               User?             @relation("DoctorAppointments", fields: [doctorId], references: [id])
 }
 
 model Prescription {
@@ -341,25 +433,135 @@ model Medicine {
   ingredients  String?
   interactions String?
   warnings     String?
+  alternatives String?
   imageUrl     String?
   priceYen     Int
   stock        Int             @default(0)
   pharmacy     PharmacyProfile @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
 }
 
-model TelemedicineSession {
+model Coupon {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  discountPercent Int       @default(0)
+  discountYen     Int       @default(0)
+  ambassadorOnly  Boolean   @default(false)
+  active          Boolean   @default(true)
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model BlogBookmark {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model BlogLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model CorporateEmployee {
+  id             String    @id @default(cuid())
+  companyId      String
+  name           String
+  email          String
+  department     String?
+  status         String    @default("active")
+  userId         String?
+  lastCheckupAt  DateTime?
+  vaccinatedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  company        CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, email])
+}
+
+model CorporateCampaign {
   id               String   @id @default(cuid())
-  appointmentId    String?
-  hostId           String
-  patientId        String
-  roomUrl          String
-  provider         String   @default("mock")
-  status           String   @default("scheduled")
+  companyId        String
+  name             String
+  type             String   @default("health")
+  status           String   @default("planned")
+  participation    Int      @default(0)
+  targetCount      Int      @default(0)
+  scheduledAt      DateTime?
   notes            String?
-  recordingConsent Boolean  @default(false)
   createdAt        DateTime @default(now())
-  host             User     @relation("TelemedicineHost", fields: [hostId], references: [id])
-  patient          User     @relation("TelemedicinePatient", fields: [patientId], references: [id])
+  company          CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model MedicalCertificate {
+  id          String   @id @default(cuid())
+  companyId   String
+  employeeId  String?
+  employeeName String
+  type        String   @default("fitness")
+  issuedAt    DateTime @default(now())
+  validUntil  DateTime?
+  notes       String?
+  company     CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model SickLeaveRecord {
+  id           String   @id @default(cuid())
+  companyId    String
+  employeeId   String?
+  employeeName String
+  startDate    DateTime
+  endDate      DateTime?
+  reason       String?
+  status       String   @default("open")
+  createdAt    DateTime @default(now())
+  company      CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model MarketplaceOrder {
+  id           String   @id @default(cuid())
+  userId       String
+  medicineId   String
+  quantity     Int
+  totalYen     Int
+  delivery     Boolean  @default(false)
+  status       String   @default("placed")
+  couponCode   String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TelemedicineSession {
+  id                  String   @id @default(cuid())
+  appointmentId       String?
+  hostId              String
+  patientId           String
+  roomUrl             String
+  provider            String   @default("mock")
+  status              String   @default("scheduled")
+  notes               String?
+  recordingConsent    Boolean  @default(false)
+  recordingEnabled    Boolean  @default(false)
+  recordingUrl        String?
+  screenShareEnabled  Boolean  @default(true)
+  quality             String   @default("hd")
+  transcription       String?
+  createdAt           DateTime @default(now())
+  host                User     @relation("TelemedicineHost", fields: [hostId], references: [id])
+  patient             User     @relation("TelemedicinePatient", fields: [patientId], references: [id])
 }
 
 model CommunityPost {
@@ -380,8 +582,14 @@ model Invoice {
   description String
   status      String    @default("OPEN")
   providerRef String?
+  paymentMethod String?
+  couponCode  String?
+  discountYen Int       @default(0)
+  refundedYen Int       @default(0)
+  corporate   Boolean   @default(false)
   createdAt   DateTime  @default(now())
   paidAt      DateTime?
+  refundedAt  DateTime?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -393,6 +601,8 @@ model Review {
   rating     Int
   comment    String?
   verified   Boolean  @default(false)
+  fraudScore Int      @default(0)
+  spamFlag   Boolean  @default(false)
   createdAt  DateTime @default(now())
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
@@ -404,6 +614,7 @@ model BlogPost {
   content    String
   coverImage String
   tags       String?
+  category   String?       @default("medical_news")
   published  Boolean       @default(false)
   viewCount  Int           @default(0)
   likeCount  Int           @default(0)
@@ -412,6 +623,8 @@ model BlogPost {
   author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   views      BlogView[]
   comments   BlogComment[]
+  bookmarks  BlogBookmark[]
+  likes      BlogLike[]
 }
 
 model BlogView {
@@ -443,8 +656,10 @@ model ChatThread {
   id             String        @id @default(cuid())
   participantAId String
   participantBId String
+  pairType       String?
   agreedByA      Boolean       @default(false)
   agreedByB      Boolean       @default(false)
+  encrypted      Boolean       @default(true)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   participantA   User          @relation("ThreadParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
@@ -455,14 +670,18 @@ model ChatThread {
 }
 
 model ChatMessage {
-  id         String     @id @default(cuid())
-  threadId   String
-  senderId   String
-  body       String
-  attachment String?
-  createdAt  DateTime   @default(now())
-  thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender     User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  id               String     @id @default(cuid())
+  threadId         String
+  senderId         String
+  body             String
+  encrypted        Boolean    @default(true)
+  attachment       String?
+  attachmentType   String?
+  attachmentName   String?
+  prescriptionId   String?
+  createdAt        DateTime   @default(now())
+  thread           ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender           User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 model ContactRequest {
@@ -502,16 +721,106 @@ model PlatformReview {
 }
 
 model AiConsultation {
+  id                     String    @id @default(cuid())
+  userId                 String
+  symptoms               String
+  analysis               String
+  riskLevel              String
+  specialty              String?
+  recommendations        String?
+  emergency              Boolean   @default(false)
+  diseasePredictions     String?
+  medications            String?
+  lifestyleAdvice        String?
+  nutritionAdvice        String?
+  mentalHealthAdvice     String?
+  recommendedHospitals   String?
+  recommendedDoctors     String?
+  recommendedNurses      String?
+  nearbyProviders        String?
+  appointmentSuggestion  String?
+  resultJson             String?
+  followUpAt             DateTime?
+  createdAt              DateTime  @default(now())
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  followUpReminders      FollowUpReminder[]
+}
+
+model OAuthAccount {
   id              String   @id @default(cuid())
   userId          String
-  symptoms        String
-  analysis        String
-  riskLevel       String
-  specialty       String?
-  recommendations String?
-  emergency       Boolean  @default(false)
+  provider        String
+  providerSubject String
+  email           String?
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+}
+
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique
+  publicKey    String
+  counter      Int      @default(0)
+  deviceType   String?
+  transports   String?
+  nickname     String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PhoneOtp {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  userId    String?
+  purpose   String   @default("phone_verify")
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model IdentityVerification {
+  id           String    @id @default(cuid())
+  userId       String
+  roleType     String
+  type         String
+  status       String    @default("pending")
+  documentUrl  String?
+  documentData String?
+  notes        String?
+  verifiedAt   DateTime?
+  reviewedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FollowUpReminder {
+  id             String         @id @default(cuid())
+  userId         String
+  consultationId String?
+  title          String
+  body           String
+  dueAt          DateTime
+  completed      Boolean        @default(false)
+  notified       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultation   AiConsultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+}
+
+model AuthChallenge {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  challenge String
+  payload   String?
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model ElectronicHealthRecord {
@@ -589,4 +898,109 @@ model ClinicalTrial {
   location     String?
   status       String   @default("recruiting")
   createdAt    DateTime @default(now())
+}
+
+model KnowledgeItem {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  summary     String?
+  body        String
+  mediaUrl    String?
+  tags        String?
+  category    String?
+  published   Boolean  @default(true)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DrugMonograph {
+  id           String   @id @default(cuid())
+  name         String
+  manufacturer String?
+  ingredients  String?
+  uses         String?
+  dosage       String?
+  interactions String?
+  warnings     String?
+  sideEffects  String?
+  category     String?
+  createdAt    DateTime @default(now())
+}
+
+model HealthMetric {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  value      Float
+  unit       String?
+  note       String?
+  recordedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, recordedAt])
+}
+
+model NotificationPreference {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  emailEnabled         Boolean @default(true)
+  smsEnabled           Boolean @default(true)
+  pushEnabled          Boolean @default(true)
+  lineEnabled          Boolean @default(true)
+  appointmentReminders Boolean @default(true)
+  prescriptionReminders Boolean @default(true)
+  subscriptionReminders Boolean @default(true)
+  emergencyAlerts      Boolean @default(true)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String
+  platform  String   @default("web")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String
+  email       String
+  subject     String
+  body        String
+  againstType String?
+  againstId   String?
+  status      String   @default("open")
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  type      String
+  severity  String   @default("info")
+  ip        String?
+  path      String?
+  userId    String?
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model BackupRecord {
+  id         String   @id @default(cuid())
+  filename   String
+  sizeBytes  Int      @default(0)
+  status     String   @default("completed")
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
 }

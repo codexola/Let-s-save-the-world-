@@ -19,7 +19,10 @@ type Post = {
   content: string;
   coverImage: string;
   viewCount: number;
-  author: { id: string; name: string; photoUrl?: string | null; bio?: string | null };
+  likeCount?: number;
+  tags?: string | null;
+  category?: string | null;
+  author: { id: string; name: string; photoUrl?: string | null; bio?: string | null; role?: string };
   views: Array<{ viewer: { id: string; name: string; photoUrl?: string | null } }>;
   comments: Comment[];
 };
@@ -29,6 +32,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
   const [post, setPost] = useState<Post | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [msg, setMsg] = useState("");
+  const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
     params.then((p) => setPostId(p.id));
@@ -38,7 +43,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
     if (!postId) return;
     fetch(`/api/blogs/${postId}`)
       .then((r) => r.json())
-      .then((d) => setPost(d.post));
+      .then((d) => {
+        setPost(d.post);
+        setLiked(!!d.post?.likedByMe);
+        setBookmarked(!!d.post?.bookmarkedByMe);
+      });
     fetch("/api/blogs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -96,8 +105,60 @@ export default function BlogDetailPage({ params }: { params: Promise<{ id: strin
         <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{post.content}</p>
         <div className="blog-meta">
           <span className="muted">{post.viewCount} views</span>
+          <span className="muted">♥ {post.likeCount ?? 0}</span>
+          {post.category && <span className="badge">{post.category}</span>}
+          {post.tags &&
+            post.tags.split(",").map((t) => (
+              <span key={t} className="badge">
+                #{t.trim()}
+              </span>
+            ))}
           <ViewerAvatars viewers={post.views} />
         </div>
+        {loggedIn && (
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const res = await fetch("/api/blogs", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "like", postId }),
+                });
+                const d = await res.json();
+                if (res.ok) {
+                  setLiked(d.liked);
+                  setPost((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          likeCount: Math.max(0, (prev.likeCount || 0) + (d.liked ? 1 : -1)),
+                        }
+                      : prev
+                  );
+                }
+              }}
+            >
+              {liked ? "Unlike" : "Like"}
+            </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const res = await fetch("/api/blogs", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "bookmark", postId }),
+                });
+                const d = await res.json();
+                if (res.ok) setBookmarked(d.bookmarked);
+              }}
+            >
+              {bookmarked ? "Unbookmark" : "Bookmark"}
+            </button>
+          </div>
+        )}
       </article>
 
       <section style={{ marginTop: "1.5rem" }}>

@@ -1,3 +1,5 @@
-﻿import { makeModulePage } from "@/lib/module-catalog";
+﻿import KnowledgeCenterPage from "../knowledge/page";
 
-export default makeModulePage("education");
+export default function EducationPage() {
+  return <KnowledgeCenterPage defaultTab="education" />;
+}

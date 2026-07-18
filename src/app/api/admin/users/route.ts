@@ -46,9 +46,54 @@ export async function POST(req: NextRequest) {
       await requirePermission(PERMISSIONS.DOCTORS_VERIFY);
       await prisma.doctorProfile.update({
         where: { userId: body.userId },
+        data: {
+          verified: true,
+          licenseVerified: true,
+          govDbVerified: true,
+          hospitalConfirmed: true,
+        },
+      });
+      await prisma.user.update({
+        where: { id: body.userId },
         data: { verified: true },
       });
       await audit(session.id, "doctors.verify", "DoctorProfile", body.userId);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (body.action === "verify_hospital") {
+      await requirePermission(PERMISSIONS.USERS_MANAGE);
+      await prisma.hospitalProfile.update({
+        where: { userId: body.userId },
+        data: {
+          verified: true,
+          businessRegVerified: true,
+          medicalInstitutionVerified: true,
+        },
+      });
+      await prisma.user.update({
+        where: { id: body.userId },
+        data: { verified: true },
+      });
+      await audit(session.id, "hospitals.verify", "HospitalProfile", body.userId);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (body.action === "verify_company") {
+      await requirePermission(PERMISSIONS.USERS_MANAGE);
+      await prisma.companyProfile.update({
+        where: { userId: body.userId },
+        data: {
+          verified: true,
+          businessRegVerified: true,
+          taxIdVerified: true,
+        },
+      });
+      await prisma.user.update({
+        where: { id: body.userId },
+        data: { verified: true },
+      });
+      await audit(session.id, "companies.verify", "CompanyProfile", body.userId);
       return NextResponse.json({ ok: true });
     }
 

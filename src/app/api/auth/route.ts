@@ -23,9 +23,24 @@ export async function POST(req: NextRequest) {
       if (!user || !user.active) {
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
       }
+      if (!user.passwordHash) {
+        return NextResponse.json(
+          { error: "This account uses OAuth or biometric sign-in only" },
+          { status: 401 }
+        );
+      }
       const ok = await bcrypt.compare(body.password, user.passwordHash);
       if (!ok) {
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      }
+      if (user.twoFactorEnabled && user.twoFactorSecret) {
+        const { createPending2faToken } = await import("@/lib/twofactor-token");
+        const pendingToken = await createPending2faToken(user.id);
+        return NextResponse.json({
+          requires2fa: true,
+          pendingToken,
+          message: "Enter your authenticator code",
+        });
       }
       const sessionUser = await buildSessionUser(user.id);
       if (!sessionUser) {
@@ -102,6 +117,41 @@ export async function POST(req: NextRequest) {
           where: { userId: user.id },
           update: {},
           create: { userId: user.id },
+        });
+      }
+      if (role === Role.DOCTOR) {
+        await prisma.doctorProfile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id },
+        });
+      }
+      if (role === Role.NURSE) {
+        await prisma.nurseProfile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id },
+        });
+      }
+      if (role === Role.HOSPITAL) {
+        await prisma.hospitalProfile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id, name: body.name || "Hospital" },
+        });
+      }
+      if (role === Role.PHARMACY) {
+        await prisma.pharmacyProfile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id, name: body.name || "Pharmacy" },
+        });
+      }
+      if (role === Role.COMPANY) {
+        await prisma.companyProfile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id, name: body.name || "Company" },
         });
       }
 
