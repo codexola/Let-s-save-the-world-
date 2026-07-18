@@ -38,7 +38,7 @@ export async function GET(
     orderBy: { createdAt: "desc" },
   });
 
-  let mutualReviews: Array<{
+  const mutualReviews: Array<{
     partner: { id: string; name: string; photoUrl: string | null };
     given: (typeof given)[0];
     received: (typeof received)[0];
