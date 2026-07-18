@@ -2,7 +2,11 @@
 
 MedCare — integrated healthcare platform. All core modules work out of the box with local mocks. Add API keys in `.env` to connect real external services.
 
-## Quick start
+See **`docs/ARCHITECTURE.md`** and `docker-compose.yml` (Postgres + Redis) for the modular-monolith → microservices roadmap.
+
+## Compliance
+
+Patient self-service: `/privacy` (consent, export, erasure). Admin GRC: `/grc` (retention, DSRs). Access logging on EHR reads.
 
 ```bash
 npm install
@@ -36,6 +40,11 @@ Open http://localhost:3200
 | Notifications | `/notifications` |
 | Admin | `/admin` |
 | Analytics | `/analytics` |
+| Privacy & Consent | `/privacy` |
+| GRC Compliance | `/grc` |
+| AI Lab | `/ai-lab` |
+| Architecture | `/architecture` |
+| Knowledge Center | `/knowledge` |
 | Developer | `/developer` |
 
 ## External connections (optional)

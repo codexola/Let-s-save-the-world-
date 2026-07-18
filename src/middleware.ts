@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   "/knowledge",
   "/education",
   "/faq",
+  "/architecture",
 ];
 
 const PUBLIC_API = [

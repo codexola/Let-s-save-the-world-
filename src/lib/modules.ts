@@ -33,6 +33,10 @@ export const NAV_MODULES: NavModule[] = [
   { href: "/notifications", label: "Notifications", group: "Comms", featureKey: "notifications" },
   { href: "/billing", label: "Billing", group: "Finance", featureKey: "billing" },
   { href: "/subscriptions", label: "Subscriptions", group: "Finance", featureKey: "subscriptions" },
+  { href: "/privacy", label: "Privacy & Consent", group: "Admin", featureKey: "grc" },
+  { href: "/grc", label: "GRC Compliance", group: "Admin", featureKey: "grc" },
+  { href: "/architecture", label: "Architecture", group: "Developer", featureKey: "api_platform" },
+  { href: "/ai-lab", label: "AI Lab", group: "Care", featureKey: "ai_consultant" },
   { href: "/admin", label: "Admin", group: "Admin", featureKey: "admin" },
   { href: "/developer/archive", label: "Archive", group: "Developer", featureKey: "archive" },
 ];

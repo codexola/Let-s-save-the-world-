@@ -1202,6 +1202,13 @@ async function main() {
 
   console.log("Knowledge, drugs, health metrics, and complaints seeded.");
 
+  const { ensureDefaultRetentionPolicies, setConsent, PRIVACY_POLICY_VERSION } = await import("../src/lib/privacy");
+  await ensureDefaultRetentionPolicies();
+  for (const type of ["terms", "privacy", "health_data", "telemedicine", "data_share"] as const) {
+    await setConsent({ userId: patient.id, type, granted: true, locale: "ja" });
+  }
+  console.log(`Privacy consents seeded (policy ${PRIVACY_POLICY_VERSION}).`);
+
   await prisma.archive.deleteMany({});
   await prisma.archive.create({
     data: {

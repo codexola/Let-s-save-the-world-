@@ -3,6 +3,7 @@ import { PrescriptionStatus } from "@prisma/client";
 import { getSession, audit } from "@/lib/auth";
 import { sendEmail } from "@/lib/mail";
 import { prisma } from "@/lib/db";
+import { checkPatientMedicationInteractions } from "@/lib/ai-advanced";
 
 const VALID_STATUS = new Set<string>([
   "ISSUED",
@@ -111,6 +112,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No pharmacy available to fulfill prescription" }, { status: 400 });
     }
 
+    const interactionCheck = await checkPatientMedicationInteractions(
+      String(body.patientId),
+      [String(body.medication)]
+    );
+    const critical = interactionCheck.alerts.filter((a) => a.severity === "critical");
+    if (critical.length && !body.acknowledgeInteractions) {
+      return NextResponse.json(
+        {
+          error: "Critical medication interaction / allergy alerts — set acknowledgeInteractions:true to proceed",
+          alerts: interactionCheck.alerts,
+        },
+        { status: 409 }
+      );
+    }
+
     const expiresAt = body.expiresAt
       ? new Date(body.expiresAt)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -132,11 +148,15 @@ export async function POST(req: NextRequest) {
       to: prescription.patient.email,
       userId: prescription.patient.id,
       subject: "New prescription issued",
-      body: `Dr. ${session.name} issued a prescription for ${prescription.medication}. Status: ISSUED. Expires: ${expiresAt.toISOString().slice(0, 10)}.`,
+      body: `Dr. ${session.name} issued a prescription for ${prescription.medication}. Status: ISSUED. Expires: ${expiresAt.toISOString().slice(0, 10)}.${
+        interactionCheck.alerts.length
+          ? `\n\nInteraction alerts:\n${interactionCheck.alerts.map((a) => `- [${a.severity}] ${a.message}`).join("\n")}`
+          : ""
+      }`,
     });
 
     await audit(session.id, "pharmacy.issue", "Prescription", prescription.id);
-    return NextResponse.json({ prescription });
+    return NextResponse.json({ prescription, interactionAlerts: interactionCheck.alerts });
   }
 
   if (body.action === "assign_pharmacy") {

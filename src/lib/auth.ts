@@ -115,7 +115,8 @@ export async function audit(
   userId: string | null | undefined,
   action: string,
   resource: string,
-  details?: string
+  details?: string,
+  ip?: string | null
 ) {
   await prisma.auditLog.create({
     data: {
@@ -123,6 +124,7 @@ export async function audit(
       action,
       resource,
       details,
+      ip: ip || undefined,
     },
   });
 }
