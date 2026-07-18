@@ -62,27 +62,13 @@ export async function POST(req: NextRequest) {
   });
 
   if (result.emergency) {
-    await prisma.emergencyRequest.create({
-      data: {
-        patientId: session.id,
-        symptoms,
-        location:
-          latitude != null && longitude != null
-            ? `${latitude},${longitude}`
-            : body.location || null,
-        status: "requested",
-        etaMinutes: 8 + Math.floor(Math.random() * 12),
-        hospitalNotified: true,
-      },
-    });
-    await prisma.notification.create({
-      data: {
-        userId: session.id,
-        email: session.email,
-        channel: "emergency",
-        subject: "Emergency detected",
-        body: "AI triage flagged an emergency. Call 119 immediately. An EMS request was logged.",
-      },
+    const { createEmergencyDispatch } = await import("@/lib/ems");
+    await createEmergencyDispatch({
+      patientId: session.id,
+      symptoms,
+      latitude,
+      longitude,
+      location: body.location ? String(body.location) : undefined,
     });
   }
 

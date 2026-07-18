@@ -2,54 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, audit } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
+import { runRetentionJob } from "@/lib/privacy";
 import {
-  ensureDefaultRetentionPolicies,
-  runRetentionJob,
-  CONSENT_TYPES,
-  PRIVACY_POLICY_VERSION,
-} from "@/lib/privacy";
+  buildGrcDashboard,
+  generateRegulatoryReport,
+  upsertCompliancePolicy,
+} from "@/lib/grc-platform";
 
 export async function GET() {
   try {
     await requirePermission(PERMISSIONS.AUDIT_VIEW);
-    await ensureDefaultRetentionPolicies();
-
-    const [policies, openDsrs, consentsGranted, accessLogs, auditCount] = await Promise.all([
-      prisma.retentionPolicy.findMany({ orderBy: { resource: "asc" } }),
-      prisma.dataSubjectRequest.findMany({
-        where: { status: "open" },
-        include: { user: { select: { email: true, name: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      prisma.consent.count({ where: { granted: true, withdrawnAt: null } }),
-      prisma.accessLog.count(),
-      prisma.auditLog.count(),
-    ]);
-
+    const dash = await buildGrcDashboard();
+    const openDsrs = await prisma.dataSubjectRequest.findMany({
+      where: { status: "open" },
+      include: { user: { select: { email: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
     return NextResponse.json({
       frameworks: [
-        {
-          id: "appi",
-          name: "APPI (Japan)",
-          notes: "Purpose limitation, consent, security controls, retention, disclosure records",
-        },
-        {
-          id: "hipaa",
-          name: "HIPAA-aligned (US)",
-          notes: "Access controls, audit trails, minimum necessary, patient access/amendment patterns",
-        },
-        {
-          id: "gdpr",
-          name: "GDPR (EU)",
-          notes: "Lawful basis, portability, erasure, DPIA-ready logging",
-        },
+        { id: "appi", name: "APPI (Japan)", notes: "Purpose limitation, consent, security controls, retention" },
+        { id: "hipaa", name: "HIPAA-aligned (US)", notes: "Access controls, audit trails, minimum necessary" },
+        { id: "gdpr", name: "GDPR (EU)", notes: "Lawful basis, portability, erasure, DPIA-ready logging" },
       ],
-      policyVersion: PRIVACY_POLICY_VERSION,
-      consentCatalog: CONSENT_TYPES,
-      stats: { consentsGranted, accessLogs, auditCount, openDsrs: openDsrs.length },
-      retentionPolicies: policies,
+      ...dash,
+      stats: dash.complianceDashboard.stats,
+      retentionPolicies: dash.retentionSchedules,
       dataSubjectRequests: openDsrs,
+      consentCatalog: dash.consentManagement.catalog,
+      policyVersion: dash.consentManagement.policyVersion,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";
@@ -99,6 +80,50 @@ export async function POST(req: NextRequest) {
     if (body.action === "run_retention") {
       const results = await runRetentionJob();
       return NextResponse.json({ ok: true, results });
+    }
+
+    if (body.action === "regulatory_report") {
+      const report = await generateRegulatoryReport({
+        framework: String(body.framework || "APPI"),
+        period: String(body.period || new Date().toISOString().slice(0, 7)),
+        actorId: session.id,
+      });
+      return NextResponse.json({ report });
+    }
+
+    if (body.action === "upsert_policy") {
+      const policy = await upsertCompliancePolicy({
+        code: String(body.code),
+        title: String(body.title),
+        framework: String(body.framework || "APPI"),
+        body: String(body.body || ""),
+        actorId: session.id,
+      });
+      return NextResponse.json({ policy });
+    }
+
+    if (body.action === "add_vendor") {
+      const vendor = await prisma.vendorRisk.create({
+        data: {
+          vendorName: String(body.vendorName),
+          category: String(body.category || "saas"),
+          riskScore: Number(body.riskScore || 50),
+          notes: body.notes ? String(body.notes) : null,
+        },
+      });
+      return NextResponse.json({ vendor });
+    }
+
+    if (body.action === "complete_audit") {
+      const row = await prisma.internalAudit.update({
+        where: { id: String(body.auditId) },
+        data: {
+          status: "completed",
+          findings: body.findings ? String(body.findings) : "No material findings",
+          completedAt: new Date(),
+        },
+      });
+      return NextResponse.json({ audit: row });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

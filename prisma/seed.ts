@@ -388,6 +388,8 @@ async function main() {
       emergencyAvailable: true,
       icuBeds: 24,
       totalBeds: 450,
+      emergencyBeds: 28,
+      isolationRooms: 12,
       operatingRooms: 8,
       verified: true,
       operatingHours: "24時間365日",
@@ -1208,6 +1210,270 @@ async function main() {
     await setConsent({ userId: patient.id, type, granted: true, locale: "ja" });
   }
   console.log(`Privacy consents seeded (policy ${PRIVACY_POLICY_VERSION}).`);
+
+  await prisma.ambulanceUnit.deleteMany({});
+  await prisma.ambulanceUnit.createMany({
+    data: [
+      {
+        callSign: "AMB-101",
+        status: "available",
+        latitude: 35.6895,
+        longitude: 139.6917,
+        hospitalBase: "Tokyo Central Hospital",
+      },
+      {
+        callSign: "AMB-204",
+        status: "available",
+        latitude: 35.6586,
+        longitude: 139.7454,
+        hospitalBase: "Tokyo Central Hospital",
+      },
+    ],
+  });
+
+  const { ensureLabCatalog } = await import("../src/lib/lab");
+  await prisma.laboratoryOrder.deleteMany({});
+  await prisma.labTest.deleteMany({});
+  await prisma.laboratoryProfile.deleteMany({});
+  await ensureLabCatalog();
+
+  const { ensureDigitalEmergencyId } = await import("../src/lib/ems");
+  await ensureDigitalEmergencyId(patient.id);
+
+  console.log("EMS ambulances, lab catalog, and digital emergency ID seeded.");
+
+  await prisma.electronicHealthRecord.upsert({
+    where: { userId: patient.id },
+    update: {
+      personalInfo: JSON.stringify({
+        name: "Yuki Tanaka",
+        email: "patient@medcare.local",
+        bloodType: "A+",
+        language: "日本語",
+      }),
+      medicalHistory: "2019 mild hypertension; 2022 allergic rhinitis",
+      diagnoses: "Essential hypertension (I10); Allergic rhinitis",
+      treatments: "Amlodipine 5mg; Losartan 50mg; lifestyle counseling",
+      operations: "None",
+      labResults: "See laboratory orders",
+      imaging: "See medical imaging studies",
+      vaccinations: "COVID-19, Influenza 2025",
+      allergies: "Penicillin, buckwheat",
+      medications: "Amlodipine 5mg daily; Losartan 50mg daily",
+      prescriptions: "Active antihypertensives — see pharmacy",
+      familyHistory: "Father: hypertension; Mother: type 2 diabetes",
+      lifestyle: "Urban professional; walks to station",
+      exercise: "30–45 min walking most days",
+      smoking: "Never",
+      alcohol: "Social, ≤2 units/week",
+      mentalHealth: "No active diagnosis; stress managed",
+      dentalHistory: "Annual cleaning; no caries noted 2025",
+      pregnancyHistory: "N/A",
+      genetics: "No known Mendelian disorders",
+      insurance: "National Health Insurance — Setagaya",
+      emergencyContacts: "Hanako Tanaka (mother) 090-9876-5432",
+    },
+    create: { userId: patient.id, diagnoses: "Essential hypertension" },
+  });
+
+  const { ensureDemoImaging } = await import("../src/lib/imaging");
+  await prisma.medicalImage.deleteMany({ where: { patientId: patient.id } });
+  await ensureDemoImaging(patient.id, doctor.id);
+
+  const { connectWearable, syncWearable } = await import("../src/lib/wearables");
+  await prisma.wearableConnection.deleteMany({ where: { userId: patient.id } });
+  await connectWearable({ userId: patient.id, platform: "apple_health" });
+  await connectWearable({ userId: patient.id, platform: "fitbit" });
+  await syncWearable(patient.id);
+
+  const { ensureRpmEnrollment, runRpmCheck } = await import("../src/lib/rpm");
+  await prisma.rpmAlert.deleteMany({ where: { patientId: patient.id } });
+  await prisma.rpmDailyScore.deleteMany({ where: { userId: patient.id } });
+  await ensureRpmEnrollment(patient.id, doctor.id);
+  await runRpmCheck(patient.id);
+
+  console.log("EHR, imaging studies, wearables, and RPM seeded.");
+
+  const { enrollChronic } = await import("../src/lib/chronic");
+  await prisma.chronicProgressLog.deleteMany({ where: { userId: patient.id } });
+  await prisma.chronicMedReminder.deleteMany({ where: { userId: patient.id } });
+  await prisma.chronicCondition.deleteMany({ where: { userId: patient.id } });
+  await enrollChronic({ userId: patient.id, condition: "Hypertension", doctorId: doctor.id });
+  await enrollChronic({ userId: patient.id, condition: "Diabetes", doctorId: doctor.id });
+
+  const { ensureVaccinationSeed } = await import("../src/lib/vaccination");
+  await prisma.vaccinationCertificate.deleteMany({ where: { userId: patient.id } });
+  await prisma.vaccinationRecord.deleteMany({ where: { userId: patient.id } });
+  await prisma.vaccinationCampaign.deleteMany({});
+  await ensureVaccinationSeed(patient.id, companyUser.id);
+
+  const { ensureFamilySeed } = await import("../src/lib/family");
+  await prisma.familyMedicationLog.deleteMany({ where: { ownerId: patient.id } });
+  await prisma.familyAppointment.deleteMany({ where: { ownerId: patient.id } });
+  await prisma.familyMember.deleteMany({ where: { ownerId: patient.id } });
+  await ensureFamilySeed(patient.id);
+
+  console.log("Chronic, vaccination, and family health seeded.");
+
+  const { ensureHomeCareSeed } = await import("../src/lib/homecare");
+  await prisma.homeCareOrder.deleteMany({ where: { patientId: patient.id } });
+  await ensureHomeCareSeed(patient.id, nurse.id);
+
+  const { ensureCaregiverSeed } = await import("../src/lib/caregiver");
+  await ensureCaregiverSeed();
+
+  const { ensureInsurancePolicy } = await import("../src/lib/insurance");
+  await prisma.insurancePreAuth.deleteMany({ where: { userId: patient.id } });
+  await prisma.insuranceClaim.deleteMany({ where: { userId: patient.id } });
+  await prisma.insurancePolicy.deleteMany({ where: { userId: patient.id } });
+  await ensureInsurancePolicy(patient.id);
+
+  const { ensureTrialsSeed } = await import("../src/lib/trials");
+  await prisma.trialParticipation.deleteMany({});
+  await prisma.clinicalTrial.deleteMany({});
+  await ensureTrialsSeed();
+
+  console.log("Home care, caregiver, insurance, and clinical trials seeded.");
+
+  await prisma.hospitalProfile.updateMany({
+    where: { name: "Tokyo Central Hospital" },
+    data: { emergencyBeds: 28, isolationRooms: 12 },
+  });
+
+  const { createPharmacyDelivery, setupAutoRefill, syncPharmacyInventory } = await import(
+    "../src/lib/pharmacy-delivery"
+  );
+  await prisma.pharmacyDelivery.deleteMany({ where: { patientId: patient.id } });
+  await prisma.pharmacyRefill.deleteMany({ where: { patientId: patient.id } });
+  await createPharmacyDelivery({
+    patientId: patient.id,
+    medicineName: "Amlodipine 5mg",
+    sameDay: true,
+    address: "Setagaya, Tokyo",
+  });
+  await createPharmacyDelivery({
+    patientId: patient.id,
+    medicineName: "Insulin glargine",
+    sameDay: true,
+    coldChain: true,
+    prescriptionImage: "demo-rx",
+  });
+  await setupAutoRefill({ patientId: patient.id, medication: "Amlodipine 5mg", intervalDays: 30 });
+  await syncPharmacyInventory();
+
+  const { getRealtimeBedStatus } = await import("../src/lib/beds");
+  await prisma.hospitalBedSnapshot.deleteMany({});
+  await getRealtimeBedStatus(hospitalUser.id);
+
+  const { ensureSupplyCatalog } = await import("../src/lib/supply");
+  await prisma.supplyOrderItem.deleteMany({});
+  await prisma.supplyOrder.deleteMany({});
+  await prisma.supplyProduct.deleteMany({});
+  await prisma.supplySupplier.deleteMany({});
+  await ensureSupplyCatalog();
+
+  console.log("Pharmacy delivery, beds, and supply marketplace seeded.");
+
+  const { ensurePublicHealthSeed } = await import("../src/lib/public-health");
+  await prisma.outbreakAlert.deleteMany({});
+  await prisma.publicHealthReport.deleteMany({});
+  await ensurePublicHealthSeed();
+
+  const researcher =
+    (await prisma.user.findFirst({ where: { email: "researcher@medcare.local" } })) ||
+    (await prisma.user.findFirst({ where: { role: "RESEARCHER" } })) ||
+    doctor;
+  const { ensureResearchSeed } = await import("../src/lib/research-platform");
+  await prisma.researchCollab.deleteMany({});
+  await prisma.researchGrant.deleteMany({});
+  await prisma.researchPaper.deleteMany({});
+  await prisma.researchDataset.deleteMany({});
+  await ensureResearchSeed(researcher.id);
+
+  const { ensureEducationCatalog } = await import("../src/lib/education");
+  await prisma.eduCertificate.deleteMany({});
+  await prisma.eduEnrollment.deleteMany({});
+  await prisma.eduQuiz.deleteMany({});
+  await prisma.eduCourse.deleteMany({});
+  await prisma.eduConference.deleteMany({});
+  await ensureEducationCatalog();
+
+  const { ensureCoachGoals } = await import("../src/lib/health-coach");
+  await prisma.coachCheckIn.deleteMany({ where: { userId: patient.id } });
+  await prisma.coachGoal.deleteMany({ where: { userId: patient.id } });
+  await ensureCoachGoals(patient.id);
+
+  const { ensureSocialSeed } = await import("../src/lib/social");
+  await prisma.qaAnswer.deleteMany({});
+  await prisma.moderationFlag.deleteMany({});
+  await prisma.communityBookmark.deleteMany({});
+  await prisma.communityComment.deleteMany({});
+  await prisma.communityMembership.deleteMany({});
+  await prisma.socialFollow.deleteMany({});
+  await prisma.communityPost.deleteMany({});
+  await prisma.diseaseCommunity.deleteMany({});
+  await ensureSocialSeed();
+  const ht = await prisma.diseaseCommunity.findFirst({ where: { disease: "Hypertension" } });
+  if (ht) {
+    await prisma.communityMembership.create({
+      data: { userId: patient.id, communityId: ht.id },
+    });
+    await prisma.communityPost.create({
+      data: {
+        authorId: patient.id,
+        communityId: ht.id,
+        title: "My BP recovery story",
+        body: "After starting amlodipine and walking daily, my home readings improved.",
+        postType: "recovery_story",
+        topic: "hypertension",
+        status: "published",
+      },
+    });
+    await prisma.communityPost.create({
+      data: {
+        authorId: patient.id,
+        communityId: ht.id,
+        title: "Is salt restriction always required?",
+        body: "Looking for clinician-moderated answers on sodium targets.",
+        postType: "qa",
+        topic: "hypertension",
+        status: "published",
+      },
+    });
+  }
+  await prisma.socialFollow.create({
+    data: { followerId: patient.id, targetId: doctor.id },
+  });
+  await prisma.socialFollow.create({
+    data: { followerId: patient.id, targetId: hospitalUser.id },
+  });
+
+  console.log("Public health, research, education, coach, and social seeded.");
+
+  // Features 49–51: API platform, global, AI analytics
+  const { ensureDeveloperSeed } = await import("../src/lib/api-platform");
+  const { ensureGlobalSeed } = await import("../src/lib/global-platform");
+  const { ensureAnalyticsPlatformSeed } = await import("../src/lib/analytics-platform");
+  await ensureDeveloperSeed(developer.id);
+  await ensureGlobalSeed();
+  await ensureAnalyticsPlatformSeed();
+  await prisma.user.update({
+    where: { id: patient.id },
+    data: { countryCode: "JP", timezone: "Asia/Tokyo", currency: "JPY", locale: "ja" },
+  });
+  console.log("API platform, global packs, and executive analytics seeded.");
+
+  const { ensureSocSeed } = await import("../src/lib/soc");
+  const { ensureDrSeed } = await import("../src/lib/dr");
+  const { ensureGrcExtensionsSeed } = await import("../src/lib/grc-platform");
+  const { ensureEnterpriseSeed } = await import("../src/lib/enterprise");
+  const { ensureExpansionSeed } = await import("../src/lib/expansion");
+  await ensureSocSeed();
+  await ensureDrSeed();
+  await ensureGrcExtensionsSeed();
+  await ensureEnterpriseSeed(admin.id);
+  await ensureExpansionSeed();
+  console.log("SOC, DR/BCP, GRC extensions, enterprise, and expansion seeded.");
 
   await prisma.archive.deleteMany({});
   await prisma.archive.create({

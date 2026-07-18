@@ -289,5 +289,21 @@ export async function runReminderJob() {
     sent += 1;
   }
 
-  return { sent, appointments: appts.length, prescriptions: rxs.length, subscriptions: subs.length, followUps: followUps.length };
+  const { sendDueMedicationReminders } = await import("./chronic");
+  const chronicMeds = await sendDueMedicationReminders();
+  sent += chronicMeds;
+
+  const { sendVaccinationReminders } = await import("./vaccination");
+  const vaxReminders = await sendVaccinationReminders();
+  sent += vaxReminders;
+
+  return {
+    sent,
+    appointments: appts.length,
+    prescriptions: rxs.length,
+    subscriptions: subs.length,
+    followUps: followUps.length,
+    chronicMedReminders: chronicMeds,
+    vaccinationReminders: vaxReminders,
+  };
 }

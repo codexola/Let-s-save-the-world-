@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, audit } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { clientMeta, logAccess } from "@/lib/access-log";
 import { hasActiveConsent } from "@/lib/privacy";
+import { EHR_SECTIONS, getLifelongEhr, upsertLifelongEhr } from "@/lib/ehr";
+import { prisma } from "@/lib/db";
+import { ensureDemoImaging } from "@/lib/imaging";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,14 +12,14 @@ export async function GET(req: NextRequest) {
     const meta = clientMeta(req);
 
     if (session.role === "PATIENT") {
-      const ok = await hasActiveConsent(session.id, "health_data");
-      if (!ok) {
-        // soft-allow read but warn — still log access
-      }
+      await hasActiveConsent(session.id, "health_data");
     }
 
     const targetId =
-      (session.role === "DOCTOR" || session.role === "ADMIN" || session.role === "DEVELOPER") &&
+      (session.role === "DOCTOR" ||
+        session.role === "ADMIN" ||
+        session.role === "DEVELOPER" ||
+        session.role === "NURSE") &&
       req.nextUrl.searchParams.get("userId")
         ? String(req.nextUrl.searchParams.get("userId"))
         : session.id;
@@ -26,30 +28,42 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    let ehr = await prisma.electronicHealthRecord.findUnique({ where: { userId: targetId } });
-    if (!ehr && targetId === session.id) {
-      ehr = await prisma.electronicHealthRecord.create({
+    const doctor = await prisma.user.findFirst({ where: { role: "DOCTOR" } });
+    await ensureDemoImaging(targetId, doctor?.id);
+
+    let ehrRow = await prisma.electronicHealthRecord.findUnique({ where: { userId: targetId } });
+    if (!ehrRow && targetId === session.id) {
+      ehrRow = await prisma.electronicHealthRecord.create({
         data: {
           userId: session.id,
           diagnoses: "Hypertension (managed)",
           treatments: "Lifestyle + ACE inhibitor as prescribed",
-          labResults: "Pending latest panel",
-          vaccinations: "Influenza 2025",
+          labResults: "See laboratory orders",
+          vaccinations: "Influenza 2025; COVID booster 2025",
           lifestyle: "Walking 30 min most days",
+          exercise: "Moderate aerobic 3–4×/week",
+          smoking: "Never smoker",
+          alcohol: "Occasional social",
+          mentalHealth: "No active psychiatric diagnoses",
+          dentalHistory: "Routine cleanings annual",
+          pregnancyHistory: "N/A",
+          genetics: "No known hereditary syndromes reported",
         },
       });
     }
+
+    const lifelong = await getLifelongEhr(targetId);
 
     await logAccess({
       userId: targetId,
       accessorId: session.id,
       action: "access.ehr.read",
       resource: "ElectronicHealthRecord",
-      resourceId: ehr?.id,
+      resourceId: ehrRow?.id || lifelong?.id,
       ...meta,
     });
 
-    return NextResponse.json({ ehr });
+    return NextResponse.json({ ehr: lifelong, sections: EHR_SECTIONS, raw: ehrRow });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";
     const status = message === "UNAUTHORIZED" ? 401 : 400;
@@ -63,29 +77,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const meta = clientMeta(req);
 
-    const ehr = await prisma.electronicHealthRecord.upsert({
-      where: { userId: session.id },
-      update: {
-        diagnoses: body.diagnoses != null ? String(body.diagnoses) : undefined,
-        treatments: body.treatments != null ? String(body.treatments) : undefined,
-        operations: body.operations != null ? String(body.operations) : undefined,
-        labResults: body.labResults != null ? String(body.labResults) : undefined,
-        imaging: body.imaging != null ? String(body.imaging) : undefined,
-        vaccinations: body.vaccinations != null ? String(body.vaccinations) : undefined,
-        familyHistory: body.familyHistory != null ? String(body.familyHistory) : undefined,
-        lifestyle: body.lifestyle != null ? String(body.lifestyle) : undefined,
-        genetics: body.genetics != null ? String(body.genetics) : undefined,
-      },
-      create: {
-        userId: session.id,
-        diagnoses: body.diagnoses ? String(body.diagnoses) : null,
-        treatments: body.treatments ? String(body.treatments) : null,
-        labResults: body.labResults ? String(body.labResults) : null,
-      },
-    });
+    const targetId =
+      ["DOCTOR", "ADMIN", "DEVELOPER", "NURSE"].includes(session.role) && body.userId
+        ? String(body.userId)
+        : session.id;
+
+    if (targetId !== session.id && !["DOCTOR", "ADMIN", "DEVELOPER", "NURSE"].includes(session.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const ehr = await upsertLifelongEhr(targetId, body);
 
     await logAccess({
-      userId: session.id,
+      userId: targetId,
       accessorId: session.id,
       action: "access.ehr.write",
       resource: "ElectronicHealthRecord",
@@ -93,7 +97,8 @@ export async function POST(req: NextRequest) {
       ...meta,
     });
     await audit(session.id, "ehr.update", "ElectronicHealthRecord", ehr.id);
-    return NextResponse.json({ ehr });
+    const lifelong = await getLifelongEhr(targetId);
+    return NextResponse.json({ ehr: lifelong, raw: ehr });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";
     const status = message === "UNAUTHORIZED" ? 401 : 400;

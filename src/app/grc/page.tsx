@@ -61,7 +61,7 @@ export default function GrcPage() {
     <PageShell
       eyebrow="GRC"
       title="Governance, risk & compliance"
-      description="APPI / HIPAA-aligned / GDPR controls — retention policies, DSRs, consent catalog, audit scale."
+      description="Consent · privacy preferences · access control policies · retention · regulatory reporting · internal audits · vendor risk · data lineage · policy management · compliance dashboards."
     >
       {error && <p className="error-text">{error}</p>}
       {message && <p className="muted">{message}</p>}
@@ -170,6 +170,78 @@ export default function GrcPage() {
               Resolve
             </button>
           </div>
+        ))}
+      </div>
+
+      <div className="panel" style={{ marginTop: "1rem" }}>
+        <h2 style={{ marginTop: 0 }}>Policies · access control · vendors · lineage · audits</h2>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={async () => {
+            const res = await fetch("/api/grc", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "regulatory_report", framework: "APPI", period: "2026-Q3" }),
+            });
+            const d = await res.json();
+            setMessage(res.ok ? `Report filed: ${d.report.title}` : d.error);
+            load();
+          }}
+        >
+          Generate regulatory report
+        </button>
+        <h3>Policy management</h3>
+        {((data?.policyManagement || []) as Array<{ code: string; title: string; framework: string }>).map((p) => (
+          <p key={p.code} className="muted">
+            {p.code}: {p.title} ({p.framework})
+          </p>
+        ))}
+        <h3>Access control policies</h3>
+        {((data?.accessControlPolicies || []) as Array<{ name: string; resource: string; effect: string; roles: string[] }>).map((p) => (
+          <p key={p.name} className="muted">
+            {p.effect} {p.resource} for {p.roles?.join(", ")} — {p.name}
+          </p>
+        ))}
+        <h3>Vendor risk</h3>
+        {((data?.vendorRiskManagement || []) as Array<{ vendorName: string; riskScore: number; status: string }>).map((v) => (
+          <p key={v.vendorName} className="muted">
+            {v.vendorName}: score {v.riskScore} ({v.status})
+          </p>
+        ))}
+        <h3>Data lineage</h3>
+        {((data?.dataLineage || []) as Array<{ source: string; target: string; dataType: string }>).map((e, i) => (
+          <p key={i} className="muted">
+            {e.source} → {e.target} ({e.dataType})
+          </p>
+        ))}
+        <h3>Internal audits</h3>
+        {((data?.internalAudits || []) as Array<{ id: string; title: string; status: string }>).map((a) => (
+          <p key={a.id}>
+            {a.title} — {a.status}{" "}
+            {a.status !== "completed" && (
+              <button
+                className="btn"
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/grc", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "complete_audit", auditId: a.id }),
+                  });
+                  load();
+                }}
+              >
+                Complete
+              </button>
+            )}
+          </p>
+        ))}
+        <h3>Regulatory reports</h3>
+        {((data?.regulatoryReporting || []) as Array<{ title: string; framework: string; period: string }>).map((r) => (
+          <p key={r.title + r.period} className="muted">
+            {r.title} · {r.framework} · {r.period}
+          </p>
         ))}
       </div>
     </PageShell>

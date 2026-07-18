@@ -100,8 +100,12 @@ export const PLATFORM_FEATURES = [
   { key: "education", name: "Medical Education", category: "content", description: "CME and courses" },
   { key: "health_coach", name: "AI Health Coach", category: "ai", description: "Lifestyle coaching" },
   { key: "api_platform", name: "Healthcare API Platform", category: "developer", description: "SDK, keys, webhooks" },
+  { key: "global_platform", name: "Global Platform Support", category: "ops", description: "Multi-language, currency, compliance, tax" },
   { key: "soc", name: "Security Operations Center", category: "security", description: "Threat monitoring" },
   { key: "grc", name: "Governance Risk Compliance", category: "security", description: "Consent and retention" },
+  { key: "dr_bcp", name: "Disaster Recovery & BCP", category: "ops", description: "Backups, HA, failover, continuity" },
+  { key: "enterprise", name: "Enterprise Administration", category: "admin", description: "Multi-org, SSO, workflows, licenses" },
+  { key: "expansion", name: "Future Expansion Modules", category: "developer", description: "Roadmap module slots" },
   { key: "archive", name: "Archive System", category: "admin", description: "Developer archive init/modify" },
   { key: "subscriptions", name: "Subscriptions", category: "finance", description: "Individual and corporate plans" },
 ] as const;

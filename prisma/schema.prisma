@@ -70,6 +70,9 @@ model User {
   photoUrl         String?
   bio              String?
   locale           String    @default("ja")
+  countryCode      String    @default("JP")
+  timezone         String    @default("Asia/Tokyo")
+  currency         String    @default("JPY")
   gender           String?
   dateOfBirth      DateTime?
   twoFactorEnabled Boolean   @default(false)
@@ -129,6 +132,58 @@ model User {
   complaints                 Complaint[]
   accessLogs                 AccessLog[]
   dataSubjectRequests        DataSubjectRequest[]
+  emergencyRequests          EmergencyRequest[]  @relation("EmergencyPatient")
+  digitalEmergencyId         DigitalEmergencyId?
+  laboratoryProfile          LaboratoryProfile?
+  labOrdersPatient           LaboratoryOrder[]   @relation("LabPatient")
+  labOrdersDoctor            LaboratoryOrder[]   @relation("LabDoctor")
+  medicalImagesPatient       MedicalImage[]      @relation("ImagingPatient")
+  medicalImagesOrdered       MedicalImage[]      @relation("ImagingDoctor")
+  secondOpinionRequests      MedicalImage[]      @relation("SecondOpinionDoctor")
+  wearableConnections        WearableConnection[]
+  rpmEnrollment              RpmEnrollment?
+  rpmAlertsPatient           RpmAlert[]          @relation("RpmPatient")
+  rpmAlertsDoctor            RpmAlert[]          @relation("RpmDoctor")
+  rpmDailyScores             RpmDailyScore[]
+  chronicConditions          ChronicCondition[]
+  chronicMedReminders        ChronicMedReminder[]
+  chronicProgress            ChronicProgressLog[]
+  vaccinationRecords         VaccinationRecord[]
+  vaccinationCertificates    VaccinationCertificate[]
+  vaccinationCampaignsOwned  VaccinationCampaign[] @relation("VaxCampaignOwner")
+  homeCareOrders             HomeCareOrder[]       @relation("HomeCarePatient")
+  homeCareAssigned           HomeCareOrder[]       @relation("HomeCareProvider")
+  caregiverProfile           CaregiverProfile?
+  caregiverBookingsAsPatient CaregiverBooking[]    @relation("CaregiverBookingPatient")
+  caregiverBookingsAsCaregiver CaregiverBooking[]  @relation("CaregiverBookingCaregiver")
+  insurancePolicies          InsurancePolicy[]
+  insuranceClaims            InsuranceClaim[]
+  clinicalTrialsOwned        ClinicalTrial[]       @relation("TrialResearcher")
+  trialParticipations        TrialParticipation[]
+  pharmacyDeliveries         PharmacyDelivery[]
+  pharmacyRefills            PharmacyRefill[]
+  supplyOrders               SupplyOrder[]       @relation("SupplyBuyer")
+  cdsSessions                CdsSession[]
+  researchDatasets           ResearchDataset[]   @relation("DatasetOwner")
+  researchPapers             ResearchPaper[]     @relation("PaperAuthor")
+  researchGrants             ResearchGrant[]     @relation("GrantOwner")
+  eduEnrollments             EduEnrollment[]
+  eduCertificates            EduCertificate[]
+  coachGoals                 CoachGoal[]
+  coachCheckIns              CoachCheckIn[]
+  socialFollows              SocialFollow[]      @relation("FollowFollower")
+  socialFollowedBy           SocialFollow[]      @relation("FollowTarget")
+  communityMemberships       CommunityMembership[]
+  communityComments          CommunityComment[]
+  communityBookmarks         CommunityBookmark[]
+  moderationFlags            ModerationFlag[]    @relation("FlagReporter")
+  qaAnswers                  QaAnswer[]
+  developerApps              DeveloperApp[]
+  apiUsageLogs               ApiUsageLog[]
+  orgMemberships             OrgMembership[]
+  securityIncidentsAssigned  SecurityIncident[]  @relation("IncidentAssignee")
+  approvalRequests           ApprovalRequest[]   @relation("ApprovalRequester")
+  approvalDecisions          ApprovalRequest[]   @relation("ApprovalDecider")
 }
 
 model Permission {
@@ -281,6 +336,8 @@ model HospitalProfile {
   emergencyAvailable         Boolean @default(false)
   icuBeds                    Int     @default(0)
   totalBeds                  Int     @default(0)
+  emergencyBeds              Int     @default(0)
+  isolationRooms             Int     @default(0)
   operatingRooms             Int     @default(0)
   parking                    Boolean @default(false)
   acceptedInsurance          String?
@@ -568,14 +625,24 @@ model TelemedicineSession {
 }
 
 model CommunityPost {
-  id        String   @id @default(cuid())
-  authorId  String
-  title     String
-  body      String
-  topic     String?
-  likeCount Int      @default(0)
-  createdAt DateTime @default(now())
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  authorId       String
+  title          String
+  body           String
+  topic          String?
+  communityId    String?
+  postType       String   @default("discussion")
+  likeCount      Int      @default(0)
+  moderated      Boolean  @default(false)
+  flagged        Boolean  @default(false)
+  status         String   @default("published")
+  createdAt      DateTime @default(now())
+  author         User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community      DiseaseCommunity? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  comments       CommunityComment[]
+  bookmarks      CommunityBookmark[]
+  flags          ModerationFlag[]
+  qaAnswers      QaAnswer[]
 }
 
 model Invoice {
@@ -827,28 +894,199 @@ model AuthChallenge {
 }
 
 model ElectronicHealthRecord {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  diagnoses     String?
-  treatments    String?
-  operations    String?
-  labResults    String?
-  imaging       String?
-  vaccinations  String?
-  familyHistory String?
-  lifestyle     String?
-  genetics      String?
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  diagnoses        String?
+  treatments       String?
+  operations       String?
+  labResults       String?
+  imaging          String?
+  vaccinations     String?
+  allergies        String?
+  medications      String?
+  prescriptions    String?
+  familyHistory    String?
+  lifestyle        String?
+  exercise         String?
+  smoking          String?
+  alcohol          String?
+  mentalHealth     String?
+  dentalHistory    String?
+  pregnancyHistory String?
+  genetics         String?
+  insurance        String?
+  emergencyContacts String?
+  personalInfo     String?
+  medicalHistory   String?
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FamilyMember {
-  id           String    @id @default(cuid())
-  ownerId      String
+  id                String    @id @default(cuid())
+  ownerId           String
+  name              String
+  relationship      String
+  dateOfBirth       DateTime?
+  linkedUserId      String?
+  emergencyContact  String?
+  phone             String?
+  allergies         String?
+  medications       String?
+  medicalNotes      String?
+  vaccinationNotes  String?
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  owner             User      @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  appointments      FamilyAppointment[]
+  medicationLogs    FamilyMedicationLog[]
+
+  @@index([ownerId, relationship])
+}
+
+model FamilyAppointment {
+  id             String   @id @default(cuid())
+  ownerId        String
+  familyMemberId String
+  title          String
+  scheduledAt    DateTime
+  location       String?
+  notes          String?
+  status         String   @default("booked")
+  createdAt      DateTime @default(now())
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, scheduledAt])
+}
+
+model FamilyMedicationLog {
+  id             String   @id @default(cuid())
+  ownerId        String
+  familyMemberId String
+  medication     String
+  dosage         String?
+  schedule       String?
+  lastTakenAt    DateTime?
+  nextDueAt      DateTime?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, familyMemberId])
+}
+
+model ChronicCondition {
+  id                    String   @id @default(cuid())
+  userId                String
+  condition             String
+  status                String   @default("active")
+  diagnosedAt           DateTime?
+  doctorId              String?
+  goalsJson             String?
+  lifestyleAdvice       String?
+  nutritionAdvice       String?
+  exercisePlan          String?
+  aiMonitoringNotes     String?
+  lastFollowUpAt        DateTime?
+  nextFollowUpAt        DateTime?
+  progressScore         Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminders             ChronicMedReminder[]
+  progressLogs          ChronicProgressLog[]
+
+  @@index([userId, condition])
+  @@unique([userId, condition])
+}
+
+model ChronicMedReminder {
+  id          String    @id @default(cuid())
+  userId      String
+  conditionId String?
+  medication  String
+  dosage      String?
+  schedule    String
+  nextDueAt   DateTime?
+  lastSentAt  DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condition   ChronicCondition? @relation(fields: [conditionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, nextDueAt])
+}
+
+model ChronicProgressLog {
+  id          String   @id @default(cuid())
+  userId      String
+  conditionId String
+  metric      String
+  value       Float
+  unit        String?
+  note        String?
+  recordedAt  DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condition   ChronicCondition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+
+  @@index([conditionId, recordedAt])
+}
+
+model VaccinationRecord {
+  id              String    @id @default(cuid())
+  userId          String
+  familyMemberId  String?
+  vaccineName     String
+  category        String    @default("routine")
+  doseNumber      Int       @default(1)
+  totalDoses      Int       @default(1)
+  administeredAt  DateTime?
+  dueAt           DateTime?
+  boosterDueAt    DateTime?
+  lotNumber       String?
+  provider        String?
+  site            String?
+  status          String    @default("completed")
+  notes           String?
+  campaignId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign        VaccinationCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  certificates    VaccinationCertificate[]
+
+  @@index([userId, vaccineName])
+  @@index([userId, dueAt])
+}
+
+model VaccinationCertificate {
+  id            String   @id @default(cuid())
+  userId        String
+  recordId      String
+  publicCode    String   @unique
+  issuedAt      DateTime @default(now())
+  expiresAt     DateTime?
+  payloadJson   String?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  record        VaccinationRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+model VaccinationCampaign {
+  id           String   @id @default(cuid())
+  ownerId      String?
   name         String
-  relationship String
-  dateOfBirth  DateTime?
-  owner        User      @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  type         String
+  description  String?
+  vaccineName  String
+  startDate    DateTime?
+  endDate      DateTime?
+  targetGroup  String?
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  owner        User?    @relation("VaxCampaignOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  records      VaccinationRecord[]
 }
 
 model Consent {
@@ -921,34 +1159,308 @@ model AuditLog {
 }
 
 model EmergencyRequest {
-  id               String   @id @default(cuid())
-  patientId        String?
-  symptoms         String
-  location         String?
-  status           String   @default("requested")
-  etaMinutes       Int?
-  hospitalNotified Boolean  @default(false)
-  createdAt        DateTime @default(now())
+  id                    String    @id @default(cuid())
+  patientId             String?
+  symptoms              String
+  location              String?
+  latitude              Float?
+  longitude             Float?
+  status                String    @default("requested")
+  aiAssessment          String?
+  riskLevel             String?
+  etaMinutes            Int?
+  ambulanceId           String?
+  ambulanceLat          Float?
+  ambulanceLng          Float?
+  destinationHospitalId String?
+  destinationName       String?
+  hospitalNotified      Boolean   @default(false)
+  familyNotified        Boolean   @default(false)
+  vitalsJson            String?
+  treatmentNotes        String?
+  arrivalPredictedAt    DateTime?
+  emergencyIdCode       String?
+  sharedHistoryJson     String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  patient               User?     @relation("EmergencyPatient", fields: [patientId], references: [id], onDelete: SetNull)
+  ambulance             AmbulanceUnit? @relation(fields: [ambulanceId], references: [id], onDelete: SetNull)
+}
+
+model AmbulanceUnit {
+  id            String   @id @default(cuid())
+  callSign      String   @unique
+  status        String   @default("available")
+  latitude      Float?
+  longitude     Float?
+  hospitalBase  String?
+  crewNotes     String?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  requests      EmergencyRequest[]
+}
+
+model DigitalEmergencyId {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  publicCode         String   @unique
+  bloodType          String?
+  allergies          String?
+  medications        String?
+  medicalHistory     String?
+  emergencyContacts  String?
+  insuranceInfo      String?
+  shareToken         String   @unique
+  active             Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LaboratoryProfile {
+  id                   String   @id @default(cuid())
+  userId               String?  @unique
+  name                 String
+  accreditation        String?
+  availableTests       String?
+  pricingNotes         String?
+  turnaroundHoursAvg   Int      @default(24)
+  homeSampleCollection Boolean  @default(true)
+  operatingHours       String?
+  address              String?
+  latitude             Float?
+  longitude            Float?
+  verified             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tests                LabTest[]
+  orders               LaboratoryOrder[]
+}
+
+model LabTest {
+  id              String   @id @default(cuid())
+  laboratoryId    String?
+  code            String
+  name            String
+  category        String
+  description     String?
+  priceYen        Int      @default(0)
+  turnaroundHours Int      @default(24)
+  homeCollection  Boolean  @default(false)
+  active          Boolean  @default(true)
+  laboratory      LaboratoryProfile? @relation(fields: [laboratoryId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([code])
 }
 
 model LaboratoryOrder {
-  id        String   @id @default(cuid())
-  patientId String
-  doctorId  String?
-  testType  String
-  status    String   @default("ordered")
-  result    String?
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  patientId        String
+  doctorId         String?
+  laboratoryId     String?
+  testCode         String
+  testType         String
+  status           String    @default("ordered")
+  sampleCollectedAt DateTime?
+  analyzedAt       DateTime?
+  result           String?
+  resultFileUrl    String?
+  doctorReviewedAt DateTime?
+  doctorNotes      String?
+  patientNotified  Boolean   @default(false)
+  homeCollection   Boolean   @default(false)
+  collectionAddress String?
+  priceYen         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  patient          User      @relation("LabPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor           User?     @relation("LabDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
+  laboratory       LaboratoryProfile? @relation(fields: [laboratoryId], references: [id], onDelete: SetNull)
 }
 
 model ClinicalTrial {
-  id           String   @id @default(cuid())
-  title        String
-  eligibility  String?
-  compensation String?
-  location     String?
-  status       String   @default("recruiting")
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  researcherId    String?
+  title           String
+  studyType       String   @default("interventional")
+  description     String?
+  eligibility     String?
+  exclusion       String?
+  compensation    String?
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  consentForm     String?
+  scheduleNotes   String?
+  monitoringPlan  String?
+  resultsSummary  String?
+  status          String   @default("recruiting")
+  targetEnrollment Int     @default(50)
+  enrolledCount   Int      @default(0)
+  tags            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  researcher      User?    @relation("TrialResearcher", fields: [researcherId], references: [id], onDelete: SetNull)
+  participations  TrialParticipation[]
+
+  @@index([status])
+}
+
+model TrialParticipation {
+  id           String    @id @default(cuid())
+  trialId      String
+  patientId    String
+  status       String    @default("applied")
+  matchScore   Float?
+  matchReasons String?
+  consentSignedAt DateTime?
+  scheduledAt  DateTime?
+  monitoringNotes String?
+  resultNotes  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  trial        ClinicalTrial @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  patient      User      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([trialId, patientId])
+  @@index([patientId])
+}
+
+model HomeCareOrder {
+  id            String    @id @default(cuid())
+  patientId     String
+  providerId    String?
+  serviceType   String
+  title         String
+  description   String?
+  address       String?
+  scheduledAt   DateTime?
+  status        String    @default("requested")
+  priceYen      Int       @default(0)
+  equipmentItem String?
+  notes         String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  patient       User      @relation("HomeCarePatient", fields: [patientId], references: [id], onDelete: Cascade)
+  provider      User?     @relation("HomeCareProvider", fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, serviceType])
+  @@index([status])
+}
+
+model CaregiverBooking {
+  id          String   @id @default(cuid())
+  patientId   String
+  caregiverId String
+  service     String
+  scheduledAt DateTime
+  hours       Float    @default(2)
+  status      String   @default("booked")
+  amountYen   Int      @default(0)
+  paid        Boolean  @default(false)
+  paymentRef  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  patient     User     @relation("CaregiverBookingPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  caregiverUser User   @relation("CaregiverBookingCaregiver", fields: [caregiverId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, scheduledAt])
+  @@index([caregiverId, scheduledAt])
+}
+
+model CaregiverProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  qualifications String?
+  availability   String?
+  experienceYears Int     @default(0)
+  languages      String?
+  services       String?
+  hourlyRateYen  Int      @default(3000)
+  bio            String?
+  verified       Boolean  @default(true)
+  ratingAvg      Float    @default(4.8)
+  reviewCount    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews        CaregiverReview[]
+}
+
+model CaregiverReview {
+  id          String   @id @default(cuid())
+  caregiverId String
+  authorId    String
+  rating      Int
+  body        String?
+  createdAt   DateTime @default(now())
+  caregiver   CaregiverProfile @relation(fields: [caregiverId], references: [id], onDelete: Cascade)
+
+  @@index([caregiverId])
+}
+
+model InsurancePolicy {
+  id              String   @id @default(cuid())
+  userId          String
+  insurerName     String
+  planName        String?
+  memberId        String
+  groupNumber     String?
+  coverageJson    String?
+  deductibleYen   Int      @default(0)
+  copayPercent    Float    @default(30)
+  outOfPocketMaxYen Int    @default(80000)
+  verified        Boolean  @default(false)
+  verifiedAt      DateTime?
+  cardCode        String   @unique
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claims          InsuranceClaim[]
+  preAuths        InsurancePreAuth[]
+
+  @@index([userId])
+}
+
+model InsuranceClaim {
+  id              String   @id @default(cuid())
+  userId          String
+  policyId        String
+  claimNumber     String   @unique
+  serviceDesc     String
+  amountYen       Int
+  coveredYen      Int      @default(0)
+  patientPayYen   Int      @default(0)
+  reimbursementYen Int     @default(0)
+  status          String   @default("submitted")
+  submittedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  notes           String?
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy          InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model InsurancePreAuth {
+  id          String   @id @default(cuid())
+  policyId    String
+  userId      String
+  serviceDesc String
+  amountYen   Int
+  status      String   @default("pending")
+  authCode    String?
+  decidedAt   DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  policy      InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model KnowledgeItem {
@@ -987,10 +1499,107 @@ model HealthMetric {
   value      Float
   unit       String?
   note       String?
+  source     String?  @default("manual")
+  deviceId   String?
   recordedAt DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type, recordedAt])
+  @@index([userId, source, recordedAt])
+}
+
+model MedicalImage {
+  id                    String    @id @default(cuid())
+  patientId             String
+  orderedById           String?
+  modality              String
+  title                 String
+  bodyPart              String?
+  studyDate             DateTime  @default(now())
+  imageUrl              String?
+  thumbnailUrl          String?
+  annotationsJson       String?
+  measurementsJson      String?
+  aiAnalysis            String?
+  aiFindings            String?
+  comparisonImageId     String?
+  shareToken            String?   @unique
+  shareExpiresAt        DateTime?
+  secondOpinionStatus   String?
+  secondOpinionDoctorId String?
+  secondOpinionNotes    String?
+  secondOpinionAt       DateTime?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  patient               User      @relation("ImagingPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  orderedBy             User?     @relation("ImagingDoctor", fields: [orderedById], references: [id], onDelete: SetNull)
+  secondOpinionDoctor   User?     @relation("SecondOpinionDoctor", fields: [secondOpinionDoctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, modality])
+}
+
+model WearableConnection {
+  id           String    @id @default(cuid())
+  userId       String
+  platform     String
+  status       String    @default("connected")
+  displayName  String?
+  externalId   String?
+  lastSyncAt   DateTime?
+  syncEnabled  Boolean   @default(true)
+  metaJson     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId, status])
+}
+
+model RpmEnrollment {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  doctorId        String?
+  active          Boolean  @default(true)
+  thresholdsJson  String?
+  monitorsJson    String?
+  lastScore       Float?
+  lastCheckedAt   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RpmAlert {
+  id         String   @id @default(cuid())
+  patientId  String
+  doctorId   String?
+  metricType String
+  value      Float
+  threshold  String?
+  severity   String   @default("warning")
+  message    String
+  acknowledged Boolean @default(false)
+  emergency  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  patient    User     @relation("RpmPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor     User?    @relation("RpmDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, createdAt])
+}
+
+model RpmDailyScore {
+  id        String   @id @default(cuid())
+  userId    String
+  score     Float
+  breakdown String?
+  dateKey   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dateKey])
+  @@index([userId, dateKey])
 }
 
 model NotificationPreference {
@@ -1054,4 +1663,791 @@ model BackupRecord {
   notes      String?
   createdBy  String?
   createdAt  DateTime @default(now())
+}
+
+model PharmacyDelivery {
+  id                String    @id @default(cuid())
+  patientId         String
+  pharmacyId        String?
+  prescriptionId    String?
+  medicineName      String
+  status            String    @default("placed")
+  sameDay           Boolean   @default(true)
+  homeDelivery      Boolean   @default(true)
+  address           String?
+  prescriptionImage String?
+  courierLat        Float?
+  courierLng        Float?
+  etaMinutes        Int?
+  coldChain         Boolean   @default(false)
+  coldTempC         Float?
+  coldAlert         Boolean   @default(false)
+  trackingCode      String    @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  patient           User      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+}
+
+model PharmacyRefill {
+  id             String    @id @default(cuid())
+  patientId      String
+  medication     String
+  intervalDays   Int       @default(30)
+  nextRefillAt   DateTime
+  active         Boolean   @default(true)
+  lastOrderedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  patient        User      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, nextRefillAt])
+}
+
+model HospitalBedSnapshot {
+  id                String   @id @default(cuid())
+  hospitalUserId    String
+  availableBeds     Int
+  occupiedBeds      Int
+  icuAvailable      Int
+  icuOccupied       Int
+  emergencyAvailable Int
+  emergencyOccupied Int
+  isolationAvailable Int
+  isolationOccupied Int
+  orAvailable       Int
+  orOccupied        Int
+  equipmentJson     String?
+  forecastJson      String?
+  recordedAt        DateTime @default(now())
+
+  @@index([hospitalUserId, recordedAt])
+}
+
+model SupplyProduct {
+  id          String   @id @default(cuid())
+  supplierId  String?
+  name        String
+  category    String
+  description String?
+  sku         String?
+  priceYen    Int
+  stock       Int      @default(0)
+  unit        String   @default("each")
+  ratingAvg   Float    @default(4.5)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  supplier    SupplySupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  orderItems  SupplyOrderItem[]
+
+  @@index([category])
+}
+
+model SupplySupplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactEmail String?
+  ratingAvg   Float    @default(4.5)
+  reviewCount Int      @default(0)
+  verified    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  products    SupplyProduct[]
+}
+
+model SupplyOrder {
+  id           String   @id @default(cuid())
+  buyerId      String
+  status       String   @default("placed")
+  totalYen     Int      @default(0)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  buyer        User     @relation("SupplyBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  items        SupplyOrderItem[]
+
+  @@index([buyerId])
+}
+
+model SupplyOrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitYen   Int
+  order     SupplyOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   SupplyProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model CdsSession {
+  id              String   @id @default(cuid())
+  clinicianId     String
+  patientId       String?
+  chiefComplaint  String?
+  differentialsJson String?
+  interactionsJson String?
+  guidelinesJson  String?
+  riskJson        String?
+  labInterpJson   String?
+  imagingAssist   String?
+  documentation   String?
+  literatureJson  String?
+  disclaimer      String   @default("AI decision support assists clinicians and does not replace clinical judgment.")
+  createdAt       DateTime @default(now())
+  clinician       User     @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+
+  @@index([clinicianId, createdAt])
+}
+
+model OutbreakAlert {
+  id          String   @id @default(cuid())
+  disease     String
+  region      String
+  severity    String   @default("moderate")
+  caseCount   Int      @default(0)
+  message     String
+  active      Boolean  @default(true)
+  reportedAt  DateTime @default(now())
+}
+
+model PublicHealthReport {
+  id          String   @id @default(cuid())
+  title       String
+  reportType  String
+  region      String?
+  payloadJson String
+  generatedAt DateTime @default(now())
+}
+
+model ResearchDataset {
+  id          String   @id @default(cuid())
+  ownerId     String
+  title       String
+  institution String?
+  description String?
+  accessLevel String   @default("restricted")
+  recordCount Int      @default(0)
+  tags        String?
+  createdAt   DateTime @default(now())
+  owner       User     @relation("DatasetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model ResearchPaper {
+  id          String   @id @default(cuid())
+  authorId    String
+  title       String
+  abstract    String?
+  institution String?
+  status      String   @default("draft")
+  doi         String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  author      User     @relation("PaperAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model ResearchGrant {
+  id          String   @id @default(cuid())
+  ownerId     String
+  title       String
+  agency      String?
+  amountYen   Int      @default(0)
+  status      String   @default("active")
+  startDate   DateTime?
+  endDate     DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  owner       User     @relation("GrantOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model ResearchCollab {
+  id          String   @id @default(cuid())
+  title       String
+  orgType     String
+  orgName     String
+  description String?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+}
+
+model EduCourse {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   @default("course")
+  description String?
+  mediaUrl    String?
+  cmeCredits  Float    @default(0)
+  durationMin Int      @default(60)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  quizzes     EduQuiz[]
+  enrollments EduEnrollment[]
+  certificates EduCertificate[]
+}
+
+model EduQuiz {
+  id          String   @id @default(cuid())
+  courseId    String
+  question    String
+  optionsJson String
+  answerIndex Int
+  course      EduCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model EduEnrollment {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  progress    Float    @default(0)
+  completed   Boolean  @default(false)
+  quizScore   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      EduCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model EduCertificate {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  publicCode  String   @unique
+  cmeCredits  Float    @default(0)
+  issuedAt    DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      EduCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model EduConference {
+  id          String   @id @default(cuid())
+  title       String
+  location    String?
+  startsAt    DateTime?
+  description String?
+  virtualUrl  String?
+  createdAt   DateTime @default(now())
+}
+
+model CoachGoal {
+  id          String   @id @default(cuid())
+  userId      String
+  category    String
+  title       String
+  targetValue Float?
+  unit        String?
+  progress    Float    @default(0)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+}
+
+model CoachCheckIn {
+  id          String   @id @default(cuid())
+  userId      String
+  focusArea   String
+  advice      String
+  healthScore Float?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model SocialFollow {
+  id          String   @id @default(cuid())
+  followerId  String
+  targetId    String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  target      User     @relation("FollowTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, targetId])
+}
+
+model DiseaseCommunity {
+  id          String   @id @default(cuid())
+  name        String
+  disease     String
+  description String?
+  moderated   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  members     CommunityMembership[]
+  posts       CommunityPost[]
+}
+
+model CommunityMembership {
+  id          String   @id @default(cuid())
+  userId      String
+  communityId String
+  role        String   @default("member")
+  joinedAt    DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   DiseaseCommunity @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+}
+
+model CommunityComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model CommunityBookmark {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model ModerationFlag {
+  id        String   @id @default(cuid())
+  postId    String
+  reporterId String
+  reason    String
+  status    String   @default("open")
+  misinfo   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter  User     @relation("FlagReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model QaAnswer {
+  id         String   @id @default(cuid())
+  postId     String
+  authorId   String
+  body       String
+  accepted   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model DeveloperApp {
+  id          String   @id @default(cuid())
+  ownerId     String
+  name        String
+  description String?
+  sandbox     Boolean  @default(true)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  apiKeys     ApiKey[]
+  webhooks    WebhookEndpoint[]
+  usageLogs   ApiUsageLog[]
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  appId       String
+  name        String
+  keyPrefix   String
+  keyHash     String    @unique
+  scopesJson  String
+  rateLimit   Int       @default(120)
+  sandbox     Boolean   @default(true)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  app         DeveloperApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  appId       String
+  url         String
+  secret      String
+  eventsJson  String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  app         DeveloperApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  event       String
+  payloadJson String
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  responseCode Int?
+  createdAt   DateTime @default(now())
+  deliveredAt DateTime?
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+}
+
+model ApiUsageLog {
+  id         String   @id @default(cuid())
+  appId      String?
+  userId     String?
+  resource   String
+  method     String
+  statusCode Int
+  sandbox    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  app        DeveloperApp? @relation(fields: [appId], references: [id], onDelete: SetNull)
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([appId, createdAt])
+  @@index([resource, createdAt])
+}
+
+model CountryConfig {
+  id                     String   @id @default(cuid())
+  code                   String   @unique
+  name                   String
+  defaultLocale          String
+  defaultCurrency        String
+  timezone               String
+  taxRateBps             Int      @default(0)
+  complianceFrameworks   String
+  insurancePackKey       String
+  medicalGuidelinesJson  String?
+  active                 Boolean  @default(true)
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  fromCode  String
+  toCode    String
+  rate      Float
+  asOf      DateTime @default(now())
+
+  @@unique([fromCode, toCode])
+}
+
+model MedicineTrendPoint {
+  id          String   @id @default(cuid())
+  medicineName String
+  day         DateTime
+  prescriptions Int    @default(0)
+  revenueYen  Int      @default(0)
+
+  @@unique([medicineName, day])
+  @@index([day])
+}
+
+model DemandForecast {
+  id            String   @id @default(cuid())
+  resourceType  String
+  day           DateTime
+  region        String
+  predicted     Float
+  actual        Float?
+  confidence    Float    @default(0.7)
+  createdAt     DateTime @default(now())
+
+  @@index([resourceType, day])
+}
+
+// —— 52 SOC ——
+model SecurityIncident {
+  id          String    @id @default(cuid())
+  title       String
+  severity    String    @default("medium")
+  status      String    @default("open")
+  category    String    @default("threat")
+  summary     String
+  playbook    String?
+  assigneeId  String?
+  openedAt    DateTime  @default(now())
+  containedAt DateTime?
+  resolvedAt  DateTime?
+  assignee    User?     @relation("IncidentAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+}
+
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  title       String
+  severity    String   @default("warning")
+  source      String   @default("soc")
+  status      String   @default("open")
+  details     String?
+  relatedIp   String?
+  createdAt   DateTime @default(now())
+  acknowledgedAt DateTime?
+}
+
+model MalwareScan {
+  id          String   @id @default(cuid())
+  target      String
+  targetType  String   @default("upload")
+  status      String   @default("clean")
+  engine      String   @default("medcare-av-demo")
+  findings    String?
+  scannedAt   DateTime @default(now())
+}
+
+model AccountAnomaly {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String?
+  anomalyType String
+  score       Float    @default(0.5)
+  details     String?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+}
+
+model SiemExport {
+  id          String   @id @default(cuid())
+  format      String   @default("json")
+  eventCount  Int      @default(0)
+  destination String   @default("siem-demo")
+  payloadJson String?
+  createdAt   DateTime @default(now())
+}
+
+// —— 53 DR / BCP ——
+model RegionNode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  role        String   @default("secondary")
+  healthy     Boolean  @default(true)
+  lagSeconds  Int      @default(0)
+  endpoint    String?
+  updatedAt   DateTime @updatedAt
+}
+
+model FailoverEvent {
+  id          String   @id @default(cuid())
+  fromRegion  String
+  toRegion    String
+  reason      String
+  automated   Boolean  @default(true)
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+}
+
+model RecoveryDrill {
+  id          String   @id @default(cuid())
+  name        String
+  drillType   String   @default("restore")
+  status      String   @default("scheduled")
+  result      String?
+  validated   Boolean  @default(false)
+  scheduledAt DateTime @default(now())
+  completedAt DateTime?
+}
+
+model BcpPlan {
+  id          String   @id @default(cuid())
+  title       String
+  rtoHours    Float    @default(4)
+  rpoMinutes  Int      @default(60)
+  owner       String?
+  stepsJson   String
+  active      Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+// —— 54 GRC extensions ——
+model CompliancePolicy {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  title       String
+  framework   String
+  body        String
+  version     String   @default("1.0")
+  status      String   @default("active")
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model AccessControlPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  resource    String
+  effect      String   @default("allow")
+  rolesJson   String
+  conditions  String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model VendorRisk {
+  id          String   @id @default(cuid())
+  vendorName  String
+  category    String   @default("saas")
+  riskScore   Float    @default(50)
+  status      String   @default("monitored")
+  notes       String?
+  lastReviewAt DateTime @default(now())
+}
+
+model DataLineageEdge {
+  id          String   @id @default(cuid())
+  source      String
+  target      String
+  dataType    String
+  transform   String?
+  createdAt   DateTime @default(now())
+
+  @@index([source, target])
+}
+
+model InternalAudit {
+  id          String   @id @default(cuid())
+  title       String
+  scope       String
+  status      String   @default("planned")
+  findings    String?
+  owner       String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model RegulatoryReport {
+  id          String   @id @default(cuid())
+  title       String
+  framework   String
+  period      String
+  status      String   @default("draft")
+  payloadJson String
+  generatedAt DateTime @default(now())
+}
+
+// —— 55 Enterprise ——
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  countryCode String   @default("JP")
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  units       OrgUnit[]
+  members     OrgMembership[]
+  ssoConnections SsoConnection[]
+  budgets     BudgetLine[]
+  contracts   Contract[]
+  licenses    SoftwareLicense[]
+  workflows   WorkflowDefinition[]
+}
+
+model OrgUnit {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  parentId    String?
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent      OrgUnit?     @relation("OrgUnitTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    OrgUnit[]    @relation("OrgUnitTree")
+}
+
+model OrgMembership {
+  id          String   @id @default(cuid())
+  orgId       String
+  userId      String
+  role        String   @default("member")
+  department  String?
+  joinedAt    DateTime @default(now())
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+}
+
+model SsoConnection {
+  id          String   @id @default(cuid())
+  orgId       String
+  protocol    String
+  provider    String
+  entityId    String?
+  metadataUrl String?
+  clientId    String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  trigger     String
+  stepsJson   String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvals   ApprovalRequest[]
+}
+
+model ApprovalRequest {
+  id          String   @id @default(cuid())
+  workflowId  String?
+  requesterId String
+  deciderId   String?
+  title       String
+  status      String   @default("pending")
+  payloadJson String?
+  createdAt   DateTime @default(now())
+  decidedAt   DateTime?
+  workflow    WorkflowDefinition? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+  requester   User @relation("ApprovalRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  decider     User? @relation("ApprovalDecider", fields: [deciderId], references: [id], onDelete: SetNull)
+}
+
+model BudgetLine {
+  id          String   @id @default(cuid())
+  orgId       String
+  category    String
+  fiscalYear  Int
+  amountYen   Int
+  spentYen    Int      @default(0)
+  notes       String?
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model Contract {
+  id          String   @id @default(cuid())
+  orgId       String
+  vendor      String
+  title       String
+  valueYen    Int      @default(0)
+  status      String   @default("active")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model SoftwareLicense {
+  id          String   @id @default(cuid())
+  orgId       String
+  product     String
+  seats       Int      @default(1)
+  usedSeats   Int      @default(0)
+  status      String   @default("active")
+  renewsAt    DateTime?
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// —— 56 Future expansion ——
+model ExpansionModule {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  category    String
+  status      String   @default("planned")
+  summary     String
+  roadmapJson String?
+  relatedHref String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

@@ -21,6 +21,8 @@ const PUBLIC_PATHS = [
   "/education",
   "/faq",
   "/architecture",
+  "/ems",
+  "/laboratory",
 ];
 
 const PUBLIC_API = [
@@ -36,6 +38,14 @@ const PUBLIC_API = [
   "/api/knowledge",
   "/api/cron",
   "/api/complaints",
+  "/api/ems",
+  "/api/laboratory",
+  "/api/imaging",
+  "/api/vaccination",
+  "/api/insurance",
+  "/api/education",
+  "/api/social",
+  "/api/v1",
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -127,8 +137,38 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith("/api/knowledge") && req.method === "POST") {
       return securityHeaders(await requireAuth(req));
     }
+    if (pathname.startsWith("/api/laboratory") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/imaging") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/vaccination") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/insurance") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/education") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/social") && req.method === "POST") {
+      return securityHeaders(await requireAuth(req));
+    }
+    if (pathname.startsWith("/api/imaging") && req.method === "GET") {
+      // Allow public secure-share token lookups; other imaging GETs still need session (checked in route)
+      return securityHeaders(NextResponse.next());
+    }
+    if (pathname.startsWith("/api/vaccination") && req.method === "GET") {
+      // Allow public digital certificate verification
+      return securityHeaders(NextResponse.next());
+    }
+    if (pathname.startsWith("/api/insurance") && req.method === "GET") {
+      // Allow public digital insurance card lookup
+      return securityHeaders(NextResponse.next());
+    }
     if (pathname.startsWith("/api/complaints") && req.method === "POST") {
-      return NextResponse.next(); // allow anonymous complaints
+      return securityHeaders(NextResponse.next()); // allow anonymous complaints
     }
     return securityHeaders(NextResponse.next());
   }
