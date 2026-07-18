@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Let's save the world —
 
-## Getting Started
+MedCare integrated healthcare platform (patients, doctors, nurses, hospitals, companies).
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+cp .env.example .env
+npx prisma db push
+npx tsx prisma/seed.ts
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3200
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Email | Password | Role |
+|-------|----------|------|
+| developer@medcare.local | MedCare!2026 | Developer |
+| admin@medcare.local | MedCare!2026 | Admin |
+| patient@medcare.local | Patient!2026 | Patient |
+| doctor@medcare.local | Doctor!2026 | Doctor |
+| nurse@medcare.local | Nurse!2026 | Nurse |
+| hospital@medcare.local | Hospital!2026 | Hospital |
+| company@medcare.local | Company!2026 | Company |
 
-## Learn More
+## Highlights
 
-To learn more about Next.js, take a look at the following resources:
+- Public homepage: features, evaluations, top providers, popular blogs with viewer avatars
+- Role-specific homes after login; language settings on each home
+- Profiles with photos; mutual reviews
+- Blogs require a cover photo; views archived; evaluation replies
+- Support inquiries for admin/developer contact; chat after mutual agreement
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+GitHub: https://github.com/codexola/Let-s-save-the-world-
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel: set `JWT_SECRET` and `DATABASE_URL=file:./prisma/seed-data.db` (runtime copies to `/tmp` on Vercel).

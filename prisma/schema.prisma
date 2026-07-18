@@ -1,0 +1,549 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DEVELOPER
+  ADMIN
+  PATIENT
+  DOCTOR
+  NURSE
+  HOSPITAL
+  PHARMACY
+  COMPANY
+  CAREGIVER
+  RESEARCHER
+}
+
+enum SubscriptionPlan {
+  INDIVIDUAL
+  PREMIUM_FEATURES
+  CORPORATE
+  CORPORATE_PREMIUM
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  TRIAL
+  ADMIN_GRANTED
+}
+
+enum PrescriptionStatus {
+  ISSUED
+  APPROVED
+  PREPARING
+  READY
+  DELIVERED
+  EXPIRED
+}
+
+enum AppointmentType {
+  VIDEO
+  IN_PERSON
+  HOME_VISIT
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  RESCHEDULED
+  COMPLETED
+  WAITING_LIST
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  name             String
+  role             Role     @default(PATIENT)
+  phone            String?
+  photoUrl         String?
+  bio              String?
+  locale           String   @default("ja")
+  twoFactorEnabled Boolean  @default(false)
+  verified         Boolean  @default(false)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  permissions         UserPermission[]
+  patientProfile      PatientProfile?
+  doctorProfile       DoctorProfile?
+  nurseProfile        NurseProfile?
+  hospitalProfile     HospitalProfile?
+  pharmacyProfile     PharmacyProfile?
+  companyProfile      CompanyProfile?
+  subscriptions       Subscription[]
+  registrationCodes   RegistrationCode[] @relation("CodeOwner")
+  usedCodes           RegistrationCode[] @relation("CodeUser")
+  appointments        Appointment[]      @relation("PatientAppointments")
+  doctorAppointments  Appointment[]      @relation("DoctorAppointments")
+  prescriptions       Prescription[]     @relation("PatientPrescriptions")
+  issuedPrescriptions Prescription[]     @relation("DoctorPrescriptions")
+  notifications       Notification[]
+  reviews             Review[]
+  blogPosts           BlogPost[]
+  blogViews           BlogView[]
+  blogComments        BlogComment[]
+  chatMessages        ChatMessage[]
+  chatThreadsA        ChatThread[]       @relation("ThreadParticipantA")
+  chatThreadsB        ChatThread[]       @relation("ThreadParticipantB")
+  supportTickets      SupportTicket[]
+  contactRequests     ContactRequest[]
+  platformReviews     PlatformReview[]
+  auditLogs           AuditLog[]
+  consents            Consent[]
+  familyMembers       FamilyMember[]     @relation("FamilyOwner")
+  ehr                 ElectronicHealthRecord?
+  aiConsultations     AiConsultation[]
+  featureOverrides    FeatureOverride[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String
+  users       UserPermission[]
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  enabled      Boolean    @default(true)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+}
+
+model FeatureFlag {
+  id          String            @id @default(cuid())
+  key         String            @unique
+  name        String
+  description String
+  enabled     Boolean           @default(true)
+  category    String
+  overrides   FeatureOverride[]
+}
+
+model FeatureOverride {
+  id        String      @id @default(cuid())
+  userId    String
+  featureId String
+  enabled   Boolean
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   FeatureFlag @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, featureId])
+}
+
+model Archive {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  payload     String
+  version     Int      @default(1)
+  initialized Boolean  @default(false)
+  createdById String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PatientProfile {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  bloodType        String?
+  allergies        String?
+  medications      String?
+  insuranceInfo    String?
+  familyDoctor     String?
+  emergencyContact String?
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DoctorProfile {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  licenseNumber       String?
+  nationalRegNumber   String?
+  university          String?
+  graduationYear      Int?
+  specialty           String?
+  subspecialty        String?
+  hospitalAffiliation String?
+  languages           String?
+  consultationFee     Int?
+  onlineAvailable     Boolean @default(true)
+  offlineAvailable    Boolean @default(true)
+  verified            Boolean @default(false)
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NurseProfile {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  certifications      String?
+  clinicalSpecialties String?
+  shiftAvailability   String?
+  homeVisitAvailable  Boolean @default(false)
+  verified            Boolean @default(false)
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HospitalProfile {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  name                 String
+  departments          String?
+  equipment            String?
+  operatingHours       String?
+  emergencyAvailable   Boolean @default(false)
+  icuBeds              Int     @default(0)
+  totalBeds            Int     @default(0)
+  operatingRooms       Int     @default(0)
+  parking              Boolean @default(false)
+  acceptedInsurance    String?
+  languages            String?
+  ambulance            Boolean @default(false)
+  accreditation        String?
+  businessRegistration String?
+  verified             Boolean @default(false)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PharmacyProfile {
+  id                  String     @id @default(cuid())
+  userId              String     @unique
+  name                String
+  deliveryAvailable   Boolean    @default(true)
+  pickupAvailable     Boolean    @default(true)
+  prescriptionSupport Boolean    @default(true)
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicines           Medicine[]
+}
+
+model CompanyProfile {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  name                 String
+  taxId                String?
+  businessRegistration String?
+  employeeCount        Int     @default(0)
+  verified             Boolean @default(false)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String
+  plan             SubscriptionPlan
+  status           SubscriptionStatus @default(PENDING)
+  priceYen         Int
+  paid             Boolean            @default(false)
+  adminGranted     Boolean            @default(false)
+  grantedById      String?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  paymentRef       String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registrationCode RegistrationCode?
+  paymentHistory   PaymentHistory[]
+}
+
+model RegistrationCode {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  email          String
+  subscriptionId String?       @unique
+  ownerId        String?
+  usedById       String?
+  used           Boolean       @default(false)
+  expiresAt      DateTime
+  createdAt      DateTime      @default(now())
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  owner          User?         @relation("CodeOwner", fields: [ownerId], references: [id])
+  usedBy         User?         @relation("CodeUser", fields: [usedById], references: [id])
+}
+
+model PaymentHistory {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  amountYen      Int
+  method         String
+  status         String
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  channel   String   @default("email")
+  subject   String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  patientId   String
+  doctorId    String?
+  hospitalId  String?
+  type        AppointmentType
+  status      AppointmentStatus @default(BOOKED)
+  scheduledAt DateTime
+  notes       String?
+  createdAt   DateTime          @default(now())
+  patient     User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor      User?             @relation("DoctorAppointments", fields: [doctorId], references: [id])
+}
+
+model Prescription {
+  id         String             @id @default(cuid())
+  patientId  String
+  doctorId   String
+  pharmacyId String?
+  medication String
+  dosage     String?
+  status     PrescriptionStatus @default(ISSUED)
+  issuedAt   DateTime           @default(now())
+  expiresAt  DateTime?
+  patient    User               @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  doctor     User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+}
+
+model Medicine {
+  id           String          @id @default(cuid())
+  pharmacyId   String
+  name         String
+  manufacturer String?
+  ingredients  String?
+  interactions String?
+  warnings     String?
+  priceYen     Int
+  stock        Int             @default(0)
+  pharmacy     PharmacyProfile @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  authorId   String
+  targetType String
+  targetId   String
+  rating     Int
+  comment    String?
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model BlogPost {
+  id         String        @id @default(cuid())
+  authorId   String
+  title      String
+  content    String
+  coverImage String
+  tags       String?
+  published  Boolean       @default(false)
+  viewCount  Int           @default(0)
+  likeCount  Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views      BlogView[]
+  comments   BlogComment[]
+}
+
+model BlogView {
+  id        String   @id @default(cuid())
+  postId    String
+  viewerId  String
+  createdAt DateTime @default(now())
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  viewer    User     @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, viewerId])
+}
+
+model BlogComment {
+  id        String        @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  parentId  String?
+  rating    Int?
+  createdAt DateTime      @default(now())
+  post      BlogPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    BlogComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   BlogComment[] @relation("CommentReplies")
+}
+
+model ChatThread {
+  id             String        @id @default(cuid())
+  participantAId String
+  participantBId String
+  agreedByA      Boolean       @default(false)
+  agreedByB      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  participantA   User          @relation("ThreadParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB   User          @relation("ThreadParticipantB", fields: [participantBId], references: [id], onDelete: Cascade)
+  messages       ChatMessage[]
+
+  @@unique([participantAId, participantBId])
+}
+
+model ChatMessage {
+  id         String     @id @default(cuid())
+  threadId   String
+  senderId   String
+  body       String
+  attachment String?
+  createdAt  DateTime   @default(now())
+  thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender     User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model ContactRequest {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  email     String
+  subject   String
+  body      String
+  target    String   @default("admin")
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String
+  email       String
+  subject     String
+  body        String
+  status      String   @default("open")
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model PlatformReview {
+  id        String   @id @default(cuid())
+  authorId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model AiConsultation {
+  id              String   @id @default(cuid())
+  userId          String
+  symptoms        String
+  analysis        String
+  riskLevel       String
+  specialty       String?
+  recommendations String?
+  emergency       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ElectronicHealthRecord {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  diagnoses     String?
+  treatments    String?
+  operations    String?
+  labResults    String?
+  imaging       String?
+  vaccinations  String?
+  familyHistory String?
+  lifestyle     String?
+  genetics      String?
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FamilyMember {
+  id           String    @id @default(cuid())
+  ownerId      String
+  name         String
+  relationship String
+  dateOfBirth  DateTime?
+  owner        User      @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model Consent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  granted   Boolean
+  version   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model EmergencyRequest {
+  id               String   @id @default(cuid())
+  patientId        String?
+  symptoms         String
+  location         String?
+  status           String   @default("requested")
+  etaMinutes       Int?
+  hospitalNotified Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
+
+model LaboratoryOrder {
+  id        String   @id @default(cuid())
+  patientId String
+  doctorId  String?
+  testType  String
+  status    String   @default("ordered")
+  result    String?
+  createdAt DateTime @default(now())
+}
+
+model ClinicalTrial {
+  id           String   @id @default(cuid())
+  title        String
+  eligibility  String?
+  compensation String?
+  location     String?
+  status       String   @default("recruiting")
+  createdAt    DateTime @default(now())
+}

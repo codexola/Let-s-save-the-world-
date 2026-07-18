@@ -1,103 +1,141 @@
-import Image from "next/image";
+import Link from "next/link";
+import { BlogCard } from "@/components/BlogCard";
+import { PLATFORM_NAME, PLATFORM_TAGLINE } from "@/lib/modules";
+import { prisma } from "@/lib/db";
+import { getTopBlogPosts } from "@/lib/blog";
 
-export default function Home() {
+export default async function HomePage() {
+  const [topBlogs, topDoctors, topHospitals, platformReviews] = await Promise.all([
+    getTopBlogPosts(5),
+    prisma.doctorProfile.findMany({
+      where: { verified: true },
+      include: { user: { select: { id: true, name: true, photoUrl: true } } },
+      take: 4,
+      orderBy: { consultationFee: "desc" },
+    }),
+    prisma.hospitalProfile.findMany({
+      where: { verified: true },
+      take: 4,
+      orderBy: { totalBeds: "desc" },
+    }),
+    prisma.platformReview.findMany({
+      include: { author: { select: { id: true, name: true, photoUrl: true } } },
+      orderBy: { rating: "desc" },
+      take: 6,
+    }),
+  ]);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <>
+      <section className="hero-plane">
+        <div className="container-page hero-content">
+          <p className="badge fade-up">{PLATFORM_NAME}</p>
+          <h1 className="font-display hero-title fade-up-delay">
+            Let&apos;s save the world.
+          </h1>
+          <p className="muted hero-sub fade-up-delay-2">{PLATFORM_TAGLINE}</p>
+          <div className="hero-actions fade-up-delay-2">
+            <Link href="/register" className="btn btn-primary">
+              Get started
+            </Link>
+            <Link href="/blog" className="btn btn-ghost">
+              Read blogs
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </section>
+
+      <section id="features" className="container-page section-block">
+        <p className="badge">Features</p>
+        <h2 className="font-display section-title">Simple public overview</h2>
+        <div className="feature-grid">
+          <div className="panel">
+            <h3>Role-based care</h3>
+            <p className="muted">
+              Separate homes for patients, clinicians, hospitals, and employers — each with their
+              own dashboard after sign-in.
+            </p>
+          </div>
+          <div className="panel">
+            <h3>Verified reviews</h3>
+            <p className="muted">
+              Mutual reviews between care partners. Profiles show reviews given and received.
+            </p>
+          </div>
+          <div className="panel">
+            <h3>Medical blog</h3>
+            <p className="muted">
+              Articles require a cover photo, track views, and support evaluation replies.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page section-block">
+        <p className="badge">Service evaluations</p>
+        <h2 className="font-display section-title">What people say</h2>
+        <div className="review-grid">
+          {platformReviews.map((r) => (
+            <div key={r.id} className="panel">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {r.author.photoUrl && (
+                  <img src={r.author.photoUrl} alt="" className="avatar-sm" />
+                )}
+                <strong>{r.author.name}</strong>
+                <span className="badge">{"★".repeat(r.rating)}</span>
+              </div>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {r.comment}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="top-rated" className="container-page section-block">
+        <p className="badge">Top rated</p>
+        <h2 className="font-display section-title">Doctors & hospitals</h2>
+        <div className="two-col-grid">
+          <div>
+            <h3>Doctors</h3>
+            <ul className="plain-list">
+              {topDoctors.map((d) => (
+                <li key={d.id}>
+                  <Link href={`/profile/${d.user.id}`} className="profile-link">
+                    {d.user.photoUrl && (
+                      <img src={d.user.photoUrl} alt="" className="avatar-sm" />
+                    )}
+                    {d.user.name} — {d.specialty}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3>Hospitals</h3>
+            <ul className="plain-list">
+              {topHospitals.map((h) => (
+                <li key={h.id}>{h.name} · {h.totalBeds} beds</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page section-block">
+        <p className="badge">Popular blogs</p>
+        <h2 className="font-display section-title">Top articles by views</h2>
+        <div className="blog-grid">
+          {topBlogs.map((post) => (
+            <BlogCard key={post.id} post={post} />
+          ))}
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <Link href="/blog" className="btn btn-ghost">
+            View all blogs
+          </Link>
+        </div>
+      </section>
+    </>
   );
 }
