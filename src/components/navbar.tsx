@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PLATFORM_NAME } from "@/lib/modules";
 import { homePathForRole } from "@/lib/i18n";
+import { isPlatformOperator } from "@/lib/module-access";
 
 type User = {
   id: string;
@@ -50,9 +51,6 @@ export function Navbar() {
               <Link href="/#features" className="muted">
                 Features
               </Link>
-              <Link href="/#architecture" className="muted">
-                Platform
-              </Link>
               <Link href="/reviews" className="muted">
                 Reviews
               </Link>
@@ -78,6 +76,21 @@ export function Navbar() {
               <Link href="/notifications" className="muted">
                 Alerts
               </Link>
+              {isPlatformOperator(user.role) && (
+                <Link href="/#architecture" className="muted">
+                  Platform
+                </Link>
+              )}
+              {user.role === "ADMIN" && (
+                <Link href="/admin" className="muted">
+                  Admin
+                </Link>
+              )}
+              {user.role === "DEVELOPER" && (
+                <Link href="/developer" className="muted">
+                  Developer
+                </Link>
+              )}
               {user.photoUrl ? (
                 <img src={user.photoUrl} alt="" className="avatar-sm" />
               ) : null}

@@ -3,30 +3,14 @@ import { BlogCard } from "@/components/BlogCard";
 import { PLATFORM_NAME, PLATFORM_TAGLINE } from "@/lib/modules";
 import { prisma } from "@/lib/db";
 import { getTopBlogPosts } from "@/lib/blog";
-
-const ARCHITECTURE_MODULES = [
-  { href: "/search", label: "Search", group: "Care" },
-  { href: "/recommendations", label: "Recommendations", group: "Care" },
-  { href: "/ai-consultant", label: "AI Consultant", group: "Care" },
-  { href: "/appointments", label: "Appointments", group: "Care" },
-  { href: "/telemedicine", label: "Telemedicine", group: "Care" },
-  { href: "/pharmacy", label: "Pharmacy", group: "Care" },
-  { href: "/marketplace", label: "Marketplace", group: "Care" },
-  { href: "/hospital", label: "Hospital Dashboard", group: "Operations" },
-  { href: "/corporate", label: "Corporate Dashboard", group: "Operations" },
-  { href: "/analytics", label: "Analytics", group: "Operations" },
-  { href: "/community", label: "Community", group: "Social" },
-  { href: "/reviews", label: "Reviews", group: "Social" },
-  { href: "/blog", label: "Medical Blog", group: "Social" },
-  { href: "/messages", label: "Messages", group: "Comms" },
-  { href: "/chat", label: "Chat", group: "Comms" },
-  { href: "/notifications", label: "Notifications", group: "Comms" },
-  { href: "/billing", label: "Billing", group: "Finance" },
-  { href: "/subscriptions", label: "Subscriptions", group: "Finance" },
-  { href: "/admin", label: "Admin Console", group: "Admin" },
-];
+import { getSession } from "@/lib/auth";
+import { groupModules, isPlatformOperator, platformModulesForRole } from "@/lib/module-access";
+import { homePathForRole } from "@/lib/i18n";
 
 export default async function HomePage() {
+  const session = await getSession();
+  const showPlatformModules = isPlatformOperator(session?.role);
+
   const [topBlogs, topDoctors, topHospitals, platformReviews] = await Promise.all([
     getTopBlogPosts(5),
     prisma.doctorProfile.findMany({
@@ -41,13 +25,15 @@ export default async function HomePage() {
       orderBy: { totalBeds: "desc" },
     }),
     prisma.platformReview.findMany({
-      include: { author: { select: { id: true, name: true, photoUrl: true } } },
+      include: { author: { select: { name: true, photoUrl: true } } },
       orderBy: { rating: "desc" },
       take: 6,
     }),
   ]);
 
-  const groups = Array.from(new Set(ARCHITECTURE_MODULES.map((m) => m.group)));
+  const platformGroups = showPlatformModules
+    ? groupModules(platformModulesForRole(session!.role))
+    : [];
 
   return (
     <>
@@ -59,9 +45,15 @@ export default async function HomePage() {
           </h1>
           <p className="muted hero-sub fade-up-delay-2">{PLATFORM_TAGLINE}</p>
           <div className="hero-actions fade-up-delay-2">
-            <Link href="/register" className="btn btn-primary">
-              Get started
-            </Link>
+            {session ? (
+              <Link href={homePathForRole(session.role)} className="btn btn-primary">
+                Go to dashboard
+              </Link>
+            ) : (
+              <Link href="/register" className="btn btn-primary">
+                Get started
+              </Link>
+            )}
             <Link href="/search" className="btn btn-ghost">
               Search care
             </Link>
@@ -69,23 +61,50 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="architecture" className="container-page section-block">
-        <p className="badge">Architecture</p>
-        <h2 className="font-display section-title">Platform modules</h2>
-        <p className="muted">All modules below link to working pages with live APIs. Sign in for role-specific tools.</p>
-        {groups.map((group) => (
-          <div key={group} style={{ marginBottom: "1.5rem" }}>
-            <h3 className="muted group-label">{group}</h3>
-            <div className="module-grid">
-              {ARCHITECTURE_MODULES.filter((m) => m.group === group).map((m) => (
-                <Link key={m.href} href={m.href} className="module-link">
-                  <div style={{ fontWeight: 600 }}>{m.label}</div>
-                </Link>
-              ))}
-            </div>
+      {!session && (
+        <section id="features" className="container-page section-block">
+          <p className="badge">Care</p>
+          <h2 className="font-display section-title">What you can do</h2>
+          <p className="muted">
+            Book appointments, consult clinicians, manage prescriptions, and track your health — after you sign in,
+            your dashboard shows tools for your role.
+          </p>
+          <div className="module-grid">
+            {[
+              { href: "/register", label: "Create account" },
+              { href: "/search", label: "Find care" },
+              { href: "/blog", label: "Health articles" },
+              { href: "/reviews", label: "Reviews" },
+            ].map((m) => (
+              <Link key={m.href} href={m.href} className="module-link">
+                <div style={{ fontWeight: 600 }}>{m.label}</div>
+              </Link>
+            ))}
           </div>
-        ))}
-      </section>
+        </section>
+      )}
+
+      {showPlatformModules && (
+        <section id="architecture" className="container-page section-block">
+          <p className="badge">Architecture</p>
+          <h2 className="font-display section-title">Platform modules</h2>
+          <p className="muted">
+            Administrator / developer directory — all modules with live APIs. Not shown to general users.
+          </p>
+          {platformGroups.map(({ group, items }) => (
+            <div key={group} style={{ marginBottom: "1.5rem" }}>
+              <h3 className="muted group-label">{group}</h3>
+              <div className="module-grid">
+                {items.map((m) => (
+                  <Link key={m.href} href={m.href} className="module-link">
+                    <div style={{ fontWeight: 600 }}>{m.label}</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="container-page section-block">
         <p className="badge">Service evaluations</p>
@@ -131,7 +150,9 @@ export default async function HomePage() {
             <h3>Hospitals</h3>
             <ul className="plain-list">
               {topHospitals.map((h) => (
-                <li key={h.id}>{h.name} · {h.totalBeds} beds</li>
+                <li key={h.id}>
+                  {h.name} · {h.totalBeds} beds
+                </li>
               ))}
             </ul>
           </div>

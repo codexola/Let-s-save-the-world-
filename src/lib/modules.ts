@@ -3,6 +3,8 @@ export type NavModule = {
   label: string;
   group: string;
   featureKey?: string;
+  /** Override default group-based access (see module-access.ts) */
+  access?: "all" | "admin" | "developer";
 };
 
 export const PLATFORM_NAME = "MedCare";
@@ -53,16 +55,16 @@ export const NAV_MODULES: NavModule[] = [
   { href: "/notifications", label: "Notifications", group: "Comms", featureKey: "notifications" },
   { href: "/billing", label: "Billing", group: "Finance", featureKey: "billing" },
   { href: "/subscriptions", label: "Subscriptions", group: "Finance", featureKey: "subscriptions" },
-  { href: "/privacy", label: "Privacy & Consent", group: "Admin", featureKey: "grc" },
-  { href: "/grc", label: "GRC Compliance", group: "Admin", featureKey: "grc" },
-  { href: "/soc", label: "Security Operations", group: "Admin", featureKey: "soc" },
-  { href: "/dr", label: "Disaster Recovery", group: "Admin", featureKey: "dr_bcp" },
-  { href: "/enterprise", label: "Enterprise Admin", group: "Admin", featureKey: "enterprise" },
-  { href: "/expansion", label: "Future Expansion", group: "Developer", featureKey: "expansion" },
-  { href: "/global", label: "Global Platform", group: "Admin", featureKey: "global_platform" },
-  { href: "/developers", label: "API Platform", group: "Developer", featureKey: "api_platform" },
-  { href: "/architecture", label: "Architecture", group: "Developer", featureKey: "api_platform" },
+  { href: "/privacy", label: "Privacy & Consent", group: "Records", featureKey: "grc", access: "all" },
+  { href: "/grc", label: "GRC Compliance", group: "Admin", featureKey: "grc", access: "admin" },
+  { href: "/soc", label: "Security Operations", group: "Admin", featureKey: "soc", access: "admin" },
+  { href: "/dr", label: "Disaster Recovery", group: "Admin", featureKey: "dr_bcp", access: "admin" },
+  { href: "/enterprise", label: "Enterprise Admin", group: "Admin", featureKey: "enterprise", access: "admin" },
+  { href: "/expansion", label: "Future Expansion", group: "Developer", featureKey: "expansion", access: "admin" },
+  { href: "/global", label: "Global Platform", group: "Admin", featureKey: "global_platform", access: "admin" },
+  { href: "/developers", label: "API Platform", group: "Developer", featureKey: "api_platform", access: "admin" },
+  { href: "/architecture", label: "Architecture", group: "Developer", featureKey: "api_platform", access: "admin" },
   { href: "/ai-lab", label: "AI Lab", group: "Care", featureKey: "ai_consultant" },
-  { href: "/admin", label: "Admin", group: "Admin", featureKey: "admin" },
-  { href: "/developer/archive", label: "Archive", group: "Developer", featureKey: "archive" },
+  { href: "/admin", label: "Admin", group: "Admin", featureKey: "admin", access: "admin" },
+  { href: "/developer/archive", label: "Archive", group: "Developer", featureKey: "archive", access: "developer" },
 ];

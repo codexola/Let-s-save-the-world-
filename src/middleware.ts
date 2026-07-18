@@ -20,7 +20,6 @@ const PUBLIC_PATHS = [
   "/knowledge",
   "/education",
   "/faq",
-  "/architecture",
   "/ems",
   "/laboratory",
 ];
@@ -47,6 +46,30 @@ const PUBLIC_API = [
   "/api/social",
   "/api/v1",
 ];
+
+const OPERATOR_PATHS = [
+  "/admin",
+  "/developer",
+  "/soc",
+  "/dr",
+  "/grc",
+  "/enterprise",
+  "/expansion",
+  "/developers",
+  "/global",
+  "/executive",
+  "/architecture",
+];
+
+const DEVELOPER_ONLY_PATHS = ["/developer/archive", "/developer/features"];
+
+function isOperatorPath(pathname: string) {
+  return OPERATOR_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function isDeveloperOnlyPath(pathname: string) {
+  return DEVELOPER_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
@@ -178,18 +201,47 @@ export async function middleware(req: NextRequest) {
 
 async function requireAuth(req: NextRequest) {
   const token = req.cookies.get(COOKIE)?.value;
+  const { pathname } = req.nextUrl;
   if (!token) {
-    if (req.nextUrl.pathname.startsWith("/api/")) {
+    if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   try {
-    await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, secret());
+    const role = String(payload.role || "");
+
+    if (isDeveloperOnlyPath(pathname) && role !== "DEVELOPER") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Developer only" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin" : "/login", req.url));
+    }
+
+    if (isOperatorPath(pathname) && role !== "ADMIN" && role !== "DEVELOPER") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Admin or developer required" }, { status: 403 });
+      }
+      const home =
+        role === "DOCTOR"
+          ? "/doctor"
+          : role === "HOSPITAL"
+            ? "/hospital-home"
+            : role === "COMPANY"
+              ? "/company"
+              : role === "PHARMACY"
+                ? "/pharmacy"
+                : role === "NURSE"
+                  ? "/nurse"
+                  : "/patient";
+      return NextResponse.redirect(new URL(home, req.url));
+    }
+
     return NextResponse.next();
   } catch {
-    if (req.nextUrl.pathname.startsWith("/api/")) {
+    if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", req.url));

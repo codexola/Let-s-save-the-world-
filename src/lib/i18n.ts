@@ -122,8 +122,17 @@ export function linksForRole(role: Role | string): RoleLink[] {
     case Role.DEVELOPER:
       return [
         { href: "/developer/archive", label: "Archive" },
-        { href: "/developer/features", label: "Features" },
-        { href: "/admin", label: "Admin" },
+        { href: "/developer/features", label: "Feature flags" },
+        { href: "/admin", label: "Admin console" },
+        { href: "/developers", label: "API platform" },
+        { href: "/soc", label: "SOC" },
+        { href: "/dr", label: "Disaster recovery" },
+        { href: "/grc", label: "GRC" },
+        { href: "/enterprise", label: "Enterprise" },
+        { href: "/expansion", label: "Expansion modules" },
+        { href: "/global", label: "Global platform" },
+        { href: "/executive", label: "Executive analytics" },
+        { href: "/#architecture", label: "All platform modules" },
         ...common,
       ];
     case Role.ADMIN:
@@ -131,6 +140,14 @@ export function linksForRole(role: Role | string): RoleLink[] {
         { href: "/admin", label: "Admin console" },
         { href: "/support", label: "Support inbox" },
         { href: "/subscriptions", label: "Subscriptions" },
+        { href: "/soc", label: "SOC" },
+        { href: "/dr", label: "Disaster recovery" },
+        { href: "/grc", label: "GRC" },
+        { href: "/enterprise", label: "Enterprise" },
+        { href: "/developers", label: "API platform" },
+        { href: "/global", label: "Global platform" },
+        { href: "/executive", label: "Executive analytics" },
+        { href: "/#architecture", label: "All platform modules" },
         ...common,
       ];
     case Role.PATIENT:
@@ -140,6 +157,8 @@ export function linksForRole(role: Role | string): RoleLink[] {
         { href: "/telemedicine", label: "Telemedicine" },
         { href: "/marketplace", label: "Marketplace" },
         { href: "/pharmacy", label: "Pharmacy" },
+        { href: "/ehr", label: "Health record" },
+        { href: "/privacy", label: "Privacy & consent" },
         { href: "/billing", label: "Billing" },
         { href: "/community", label: "Community" },
         { href: "/search", label: "Search" },
