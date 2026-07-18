@@ -26,6 +26,11 @@ export async function GET() {
     featuresOn,
     platformReviews,
     blogPosts,
+    prescriptions,
+    invoicesOpen,
+    telemedicineSessions,
+    communityPosts,
+    medicines,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.appointment.count(),
@@ -35,6 +40,11 @@ export async function GET() {
     prisma.featureFlag.count({ where: { enabled: true } }),
     prisma.platformReview.findMany({ take: 5, orderBy: { createdAt: "desc" } }),
     prisma.blogPost.count({ where: { published: true } }),
+    prisma.prescription.count(),
+    prisma.invoice.count({ where: { status: "OPEN" } }),
+    prisma.telemedicineSession.count(),
+    prisma.communityPost.count(),
+    prisma.medicine.count(),
   ]);
 
   return NextResponse.json({
@@ -46,6 +56,11 @@ export async function GET() {
       emergencies,
       featuresEnabled: featuresOn,
       publishedBlogPosts: blogPosts,
+      prescriptions,
+      openInvoices: invoicesOpen,
+      telemedicineSessions,
+      communityPosts,
+      medicinesListed: medicines,
       blogStats,
     },
     platformReviews,

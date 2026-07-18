@@ -113,27 +113,48 @@ export function linksForRole(role: Role | string): RoleLink[] {
       return [
         { href: "/appointments", label: "Appointments" },
         { href: "/ai-consultant", label: "AI Consultant" },
+        { href: "/telemedicine", label: "Telemedicine" },
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/pharmacy", label: "Pharmacy" },
+        { href: "/billing", label: "Billing" },
+        { href: "/community", label: "Community" },
+        { href: "/search", label: "Search" },
         { href: "/subscriptions", label: "Subscriptions" },
         ...common,
       ];
     case Role.DOCTOR:
       return [
         { href: "/appointments", label: "Appointments" },
+        { href: "/telemedicine", label: "Telemedicine" },
+        { href: "/pharmacy", label: "Prescriptions" },
         { href: "/reviews", label: "Reviews" },
+        { href: "/analytics", label: "Analytics" },
         ...common,
       ];
     case Role.NURSE:
-      return [{ href: "/appointments", label: "Schedule" }, ...common];
+      return [
+        { href: "/appointments", label: "Schedule" },
+        { href: "/telemedicine", label: "Telemedicine" },
+        ...common,
+      ];
     case Role.HOSPITAL:
       return [
         { href: "/hospital", label: "Hospital ops" },
         { href: "/analytics", label: "Analytics" },
+        { href: "/appointments", label: "Appointments" },
         ...common,
       ];
     case Role.COMPANY:
       return [
         { href: "/corporate", label: "Corporate" },
+        { href: "/billing", label: "Billing" },
         { href: "/subscriptions", label: "Subscriptions" },
+        ...common,
+      ];
+    case Role.PHARMACY:
+      return [
+        { href: "/pharmacy", label: "Pharmacy desk" },
+        { href: "/marketplace", label: "Marketplace" },
         ...common,
       ];
     default:

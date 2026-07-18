@@ -4,6 +4,27 @@ import { PLATFORM_NAME, PLATFORM_TAGLINE } from "@/lib/modules";
 import { prisma } from "@/lib/db";
 import { getTopBlogPosts } from "@/lib/blog";
 
+const ARCHITECTURE_MODULES = [
+  { href: "/search", label: "Search", group: "Care" },
+  { href: "/ai-consultant", label: "AI Consultant", group: "Care" },
+  { href: "/appointments", label: "Appointments", group: "Care" },
+  { href: "/telemedicine", label: "Telemedicine", group: "Care" },
+  { href: "/pharmacy", label: "Pharmacy", group: "Care" },
+  { href: "/marketplace", label: "Marketplace", group: "Care" },
+  { href: "/hospital", label: "Hospital Dashboard", group: "Operations" },
+  { href: "/corporate", label: "Corporate Dashboard", group: "Operations" },
+  { href: "/analytics", label: "Analytics", group: "Operations" },
+  { href: "/community", label: "Community", group: "Social" },
+  { href: "/reviews", label: "Reviews", group: "Social" },
+  { href: "/blog", label: "Medical Blog", group: "Social" },
+  { href: "/messages", label: "Messages", group: "Comms" },
+  { href: "/chat", label: "Chat", group: "Comms" },
+  { href: "/notifications", label: "Notifications", group: "Comms" },
+  { href: "/billing", label: "Billing", group: "Finance" },
+  { href: "/subscriptions", label: "Subscriptions", group: "Finance" },
+  { href: "/admin", label: "Admin Console", group: "Admin" },
+];
+
 export default async function HomePage() {
   const [topBlogs, topDoctors, topHospitals, platformReviews] = await Promise.all([
     getTopBlogPosts(5),
@@ -25,6 +46,8 @@ export default async function HomePage() {
     }),
   ]);
 
+  const groups = Array.from(new Set(ARCHITECTURE_MODULES.map((m) => m.group)));
+
   return (
     <>
       <section className="hero-plane">
@@ -38,37 +61,29 @@ export default async function HomePage() {
             <Link href="/register" className="btn btn-primary">
               Get started
             </Link>
-            <Link href="/blog" className="btn btn-ghost">
-              Read blogs
+            <Link href="/search" className="btn btn-ghost">
+              Search care
             </Link>
           </div>
         </div>
       </section>
 
-      <section id="features" className="container-page section-block">
-        <p className="badge">Features</p>
-        <h2 className="font-display section-title">Simple public overview</h2>
-        <div className="feature-grid">
-          <div className="panel">
-            <h3>Role-based care</h3>
-            <p className="muted">
-              Separate homes for patients, clinicians, hospitals, and employers — each with their
-              own dashboard after sign-in.
-            </p>
+      <section id="architecture" className="container-page section-block">
+        <p className="badge">Architecture</p>
+        <h2 className="font-display section-title">Platform modules</h2>
+        <p className="muted">All modules below link to working pages with live APIs. Sign in for role-specific tools.</p>
+        {groups.map((group) => (
+          <div key={group} style={{ marginBottom: "1.5rem" }}>
+            <h3 className="muted group-label">{group}</h3>
+            <div className="module-grid">
+              {ARCHITECTURE_MODULES.filter((m) => m.group === group).map((m) => (
+                <Link key={m.href} href={m.href} className="module-link">
+                  <div style={{ fontWeight: 600 }}>{m.label}</div>
+                </Link>
+              ))}
+            </div>
           </div>
-          <div className="panel">
-            <h3>Verified reviews</h3>
-            <p className="muted">
-              Mutual reviews between care partners. Profiles show reviews given and received.
-            </p>
-          </div>
-          <div className="panel">
-            <h3>Medical blog</h3>
-            <p className="muted">
-              Articles require a cover photo, track views, and support evaluation replies.
-            </p>
-          </div>
-        </div>
+        ))}
       </section>
 
       <section className="container-page section-block">

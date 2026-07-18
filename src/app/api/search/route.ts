@@ -24,6 +24,24 @@ export async function GET(req: NextRequest) {
         })
       : [];
 
+  const nurses =
+    type === "all" || type === "nurse"
+      ? await prisma.nurseProfile.findMany({
+          where: q
+            ? {
+                OR: [
+                  { clinicalSpecialties: { contains: q } },
+                  { user: { name: { contains: q } } },
+                ],
+              }
+            : undefined,
+          include: {
+            user: { select: { id: true, name: true, email: true, photoUrl: true } },
+          },
+          take: 20,
+        })
+      : [];
+
   const hospitals =
     type === "all" || type === "hospital"
       ? await prisma.hospitalProfile.findMany({
@@ -32,20 +50,24 @@ export async function GET(req: NextRequest) {
                 OR: [{ name: { contains: q } }, { departments: { contains: q } }],
               }
             : undefined,
+          include: {
+            user: { select: { id: true, name: true, photoUrl: true } },
+          },
           take: 20,
         })
       : [];
 
   const medicines =
-    type === "all" || type === "medication"
+    type === "all" || type === "medicine" || type === "medication"
       ? await prisma.medicine.findMany({
           where: q ? { name: { contains: q } } : undefined,
+          include: { pharmacy: { select: { name: true } } },
           take: 20,
         })
       : [];
 
-  const posts =
-    type === "all" || type === "content"
+  const blogs =
+    type === "all" || type === "blog" || type === "content"
       ? await prisma.blogPost.findMany({
           where: q
             ? {
@@ -68,5 +90,15 @@ export async function GET(req: NextRequest) {
     take: 10,
   });
 
-  return NextResponse.json({ doctors, hospitals, medicines, posts, platformReviews, query: q });
+  return NextResponse.json({
+    doctors,
+    nurses,
+    hospitals,
+    medicines,
+    blogs,
+    posts: blogs,
+    platformReviews,
+    query: q,
+    type,
+  });
 }

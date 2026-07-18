@@ -1,3 +1,5 @@
-﻿import { makeModulePage } from "@/lib/module-catalog";
+﻿import { redirect } from "next/navigation";
 
-export default makeModulePage("chat");
+export default function ChatPage() {
+  redirect("/messages");
+}

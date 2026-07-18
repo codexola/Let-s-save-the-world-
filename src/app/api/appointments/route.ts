@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AppointmentType } from "@prisma/client";
 import { getSession } from "@/lib/auth";
+import { sendEmail } from "@/lib/mail";
 import { prisma } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (req.nextUrl.searchParams.get("doctors") === "1") {
+    const doctors = await prisma.doctorProfile.findMany({
+      where: { verified: true, onlineAvailable: true },
+      include: {
+        user: { select: { id: true, name: true, photoUrl: true, email: true } },
+      },
+      take: 50,
+    });
+    return NextResponse.json({ doctors });
+  }
 
   const appointments = await prisma.appointment.findMany({
     where:
@@ -15,8 +27,8 @@ export async function GET() {
           ? undefined
           : { patientId: session.id },
     include: {
-      patient: { select: { name: true, email: true } },
-      doctor: { select: { name: true, email: true } },
+      patient: { select: { id: true, name: true, email: true } },
+      doctor: { select: { id: true, name: true, email: true } },
     },
     orderBy: { scheduledAt: "desc" },
   });
@@ -38,24 +50,65 @@ export async function POST(req: NextRequest) {
         notes: body.notes,
         status: "BOOKED",
       },
-    });
-    await prisma.notification.create({
-      data: {
-        userId: session.id,
-        email: session.email,
-        subject: "Appointment booked",
-        body: `Your ${body.type || "VIDEO"} appointment is scheduled for ${body.scheduledAt}`,
-        channel: "email",
+      include: {
+        doctor: { select: { name: true } },
       },
     });
+
+    await sendEmail({
+      to: session.email,
+      userId: session.id,
+      subject: "Appointment booked",
+      body: `Your ${body.type || "VIDEO"} appointment with ${appointment.doctor?.name || "provider"} is scheduled for ${body.scheduledAt}.`,
+    });
+
     return NextResponse.json({ appointment });
   }
 
   if (body.action === "cancel") {
+    const existing = await prisma.appointment.findUnique({ where: { id: body.id } });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (existing.patientId !== session.id && session.role !== "ADMIN" && session.role !== "DEVELOPER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const appointment = await prisma.appointment.update({
       where: { id: body.id },
       data: { status: "CANCELLED" },
     });
+
+    await sendEmail({
+      to: session.email,
+      userId: session.id,
+      subject: "Appointment cancelled",
+      body: `Your appointment on ${existing.scheduledAt.toISOString()} has been cancelled.`,
+    });
+
+    return NextResponse.json({ appointment });
+  }
+
+  if (body.action === "reschedule") {
+    const existing = await prisma.appointment.findUnique({ where: { id: body.id } });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (existing.patientId !== session.id && session.role !== "ADMIN" && session.role !== "DEVELOPER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const appointment = await prisma.appointment.update({
+      where: { id: body.id },
+      data: {
+        scheduledAt: new Date(body.scheduledAt),
+        status: "RESCHEDULED",
+      },
+    });
+
+    await sendEmail({
+      to: session.email,
+      userId: session.id,
+      subject: "Appointment rescheduled",
+      body: `Your appointment has been moved to ${body.scheduledAt}.`,
+    });
+
     return NextResponse.json({ appointment });
   }
 

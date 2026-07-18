@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { consultSymptoms } from "@/lib/ai";
 import { prisma } from "@/lib/db";
-
-const EMERGENCY_KEYWORDS = [
-  "chest pain",
-  "cannot breathe",
-  "unconscious",
-  "severe bleeding",
-  "stroke",
-  "心臓",
-  "息ができない",
-  "意識不明",
-  "大出血",
-];
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -22,46 +11,23 @@ export async function POST(req: NextRequest) {
   const symptoms = String(body.symptoms || "").trim();
   if (!symptoms) return NextResponse.json({ error: "Symptoms required" }, { status: 400 });
 
-  const lower = symptoms.toLowerCase();
-  const emergency = EMERGENCY_KEYWORDS.some((k) => lower.includes(k.toLowerCase()));
-
-  let riskLevel = "low";
-  let specialty = "General Practice";
-  const recommendations: string[] = [];
-
-  if (emergency) {
-    riskLevel = "critical";
-    specialty = "Emergency Medicine";
-    recommendations.push("Call emergency services immediately (119 in Japan)");
-  } else if (/fever|熱|cough|咳|sore throat/.test(lower)) {
-    riskLevel = "moderate";
-    specialty = "Internal Medicine / ENT";
-    recommendations.push("Rest, hydrate, monitor temperature");
-  } else {
-    recommendations.push("Monitor symptoms and book a primary care visit");
-  }
-
-  const analysis = [
-    "AI Medical Consultant analysis (does not replace a physician).",
-    `Reported symptoms: ${symptoms}`,
-    `Suggested specialty: ${specialty}`,
-    `Risk level: ${riskLevel}`,
-  ].join("\n");
+  const result = await consultSymptoms(symptoms);
 
   const record = await prisma.aiConsultation.create({
     data: {
       userId: session.id,
       symptoms,
-      analysis,
-      riskLevel,
-      specialty,
-      recommendations: recommendations.join(" | "),
-      emergency,
+      analysis: result.analysis,
+      riskLevel: result.riskLevel,
+      specialty: result.specialty,
+      recommendations: result.recommendations,
+      emergency: result.emergency,
     },
   });
 
   return NextResponse.json({
     consultation: record,
+    provider: result.provider,
     disclaimer: "This AI triage does not replace professional medical judgment.",
   });
 }

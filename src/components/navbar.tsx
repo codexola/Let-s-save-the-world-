@@ -45,25 +45,38 @@ export function Navbar() {
           <span className="brand-dot">.</span>
         </Link>
         <nav className="header-nav">
-          <Link href="/#features" className="muted">
-            Features
-          </Link>
-          <Link href="/reviews" className="muted">
-            Reviews
-          </Link>
-          <Link href="/#top-rated" className="muted">
-            Top rated
-          </Link>
-          <Link href="/blog" className="muted">
-            Blogs
-          </Link>
-          <Link href="/support" className="muted">
-            Support
-          </Link>
+          {!user && (
+            <>
+              <Link href="/#features" className="muted">
+                Features
+              </Link>
+              <Link href="/#architecture" className="muted">
+                Platform
+              </Link>
+              <Link href="/reviews" className="muted">
+                Reviews
+              </Link>
+              <Link href="/blog" className="muted">
+                Blogs
+              </Link>
+            </>
+          )}
           {user ? (
             <>
               <Link href={homePathForRole(user.role)} className="muted">
-                Dashboard
+                Home
+              </Link>
+              <Link href="/search" className="muted">
+                Search
+              </Link>
+              <Link href="/appointments" className="muted">
+                Appointments
+              </Link>
+              <Link href="/messages" className="muted">
+                Chat
+              </Link>
+              <Link href="/notifications" className="muted">
+                Alerts
               </Link>
               {user.photoUrl ? (
                 <img src={user.photoUrl} alt="" className="avatar-sm" />
@@ -74,9 +87,17 @@ export function Navbar() {
               </button>
             </>
           ) : (
-            <Link href="/login" className="btn btn-primary">
-              Sign in
-            </Link>
+            <>
+              <Link href="/support" className="muted">
+                Support
+              </Link>
+              <Link href="/login" className="btn btn-ghost">
+                Sign in
+              </Link>
+              <Link href="/register" className="btn btn-primary">
+                Register
+              </Link>
+            </>
           )}
         </nav>
       </div>

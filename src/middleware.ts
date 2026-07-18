@@ -13,6 +13,9 @@ const PUBLIC_PATHS = [
   "/reviews",
   "/blog",
   "/profile",
+  "/search",
+  "/marketplace",
+  "/community",
 ];
 
 const PUBLIC_API = [
@@ -22,6 +25,9 @@ const PUBLIC_API = [
   "/api/support",
   "/api/subscriptions",
   "/api/users",
+  "/api/integrations",
+  "/api/community",
+  "/api/marketplace",
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -57,6 +63,12 @@ export async function middleware(req: NextRequest) {
       if (action === "create" || action === "comment" || action === "reply") {
         return requireAuth(req);
       }
+    }
+    if (pathname.startsWith("/api/marketplace") && req.method === "POST") {
+      return requireAuth(req);
+    }
+    if (pathname.startsWith("/api/community") && req.method === "POST") {
+      return requireAuth(req);
     }
     return NextResponse.next();
   }

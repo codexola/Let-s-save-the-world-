@@ -104,8 +104,12 @@ model User {
   consents            Consent[]
   familyMembers       FamilyMember[]     @relation("FamilyOwner")
   ehr                 ElectronicHealthRecord?
-  aiConsultations     AiConsultation[]
-  featureOverrides    FeatureOverride[]
+  aiConsultations            AiConsultation[]
+  featureOverrides           FeatureOverride[]
+  telemedicineSessionsHost   TelemedicineSession[] @relation("TelemedicineHost")
+  telemedicineSessionsPatient TelemedicineSession[] @relation("TelemedicinePatient")
+  communityPosts             CommunityPost[]
+  invoices                   Invoice[]
 }
 
 model Permission {
@@ -337,9 +341,48 @@ model Medicine {
   ingredients  String?
   interactions String?
   warnings     String?
+  imageUrl     String?
   priceYen     Int
   stock        Int             @default(0)
   pharmacy     PharmacyProfile @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+}
+
+model TelemedicineSession {
+  id               String   @id @default(cuid())
+  appointmentId    String?
+  hostId           String
+  patientId        String
+  roomUrl          String
+  provider         String   @default("mock")
+  status           String   @default("scheduled")
+  notes            String?
+  recordingConsent Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  host             User     @relation("TelemedicineHost", fields: [hostId], references: [id])
+  patient          User     @relation("TelemedicinePatient", fields: [patientId], references: [id])
+}
+
+model CommunityPost {
+  id        String   @id @default(cuid())
+  authorId  String
+  title     String
+  body      String
+  topic     String?
+  likeCount Int      @default(0)
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id          String    @id @default(cuid())
+  userId      String
+  amountYen   Int
+  description String
+  status      String    @default("OPEN")
+  providerRef String?
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Review {

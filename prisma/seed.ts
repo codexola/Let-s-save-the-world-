@@ -205,6 +205,7 @@ async function main() {
           emergencyAvailable: true,
           icuBeds: 24,
           totalBeds: 450,
+          operatingRooms: 8,
           verified: true,
           operatingHours: "24/7",
         },
@@ -231,6 +232,170 @@ async function main() {
           verified: true,
         },
       },
+    },
+  });
+
+  const pharmacyHash = await bcrypt.hash("Pharmacy!2026", 10);
+  const pharmacyUser = await prisma.user.upsert({
+    where: { email: "pharmacy@medcare.local" },
+    update: {
+      role: Role.PHARMACY,
+      active: true,
+      verified: true,
+      passwordHash: pharmacyHash,
+      photoUrl: avatar("Shinjuku Pharmacy"),
+    },
+    create: {
+      email: "pharmacy@medcare.local",
+      name: "Shinjuku Pharmacy Admin",
+      role: Role.PHARMACY,
+      passwordHash: pharmacyHash,
+      active: true,
+      verified: true,
+      photoUrl: avatar("Shinjuku Pharmacy"),
+      pharmacyProfile: {
+        create: {
+          name: "Shinjuku Central Pharmacy",
+          deliveryAvailable: true,
+          pickupAvailable: true,
+          prescriptionSupport: true,
+        },
+      },
+    },
+  });
+
+  const pharmacyProfile = await prisma.pharmacyProfile.upsert({
+    where: { userId: pharmacyUser.id },
+    update: { name: "Shinjuku Central Pharmacy" },
+    create: {
+      userId: pharmacyUser.id,
+      name: "Shinjuku Central Pharmacy",
+      deliveryAvailable: true,
+      pickupAvailable: true,
+      prescriptionSupport: true,
+    },
+  });
+    await prisma.medicine.deleteMany({ where: { pharmacyId: pharmacyProfile.id } });
+    await prisma.medicine.createMany({
+      data: [
+        {
+          pharmacyId: pharmacyProfile.id,
+          name: "Lisinopril 10mg",
+          manufacturer: "MedGen Pharma",
+          priceYen: 980,
+          stock: 120,
+          imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+          ingredients: "Lisinopril",
+          warnings: "Consult physician if pregnant",
+        },
+        {
+          pharmacyId: pharmacyProfile.id,
+          name: "Ibuprofen 200mg",
+          manufacturer: "PainAway Co",
+          priceYen: 450,
+          stock: 200,
+          imageUrl: "https://images.unsplash.com/photo-1471864190281-a93a3070bfe6?w=400&q=80",
+          ingredients: "Ibuprofen",
+        },
+        {
+          pharmacyId: pharmacyProfile.id,
+          name: "Metformin 500mg",
+          manufacturer: "DiabeCare",
+          priceYen: 720,
+          stock: 85,
+          imageUrl: "https://images.unsplash.com/photo-1587854691652-5c651a388a2a?w=400&q=80",
+          ingredients: "Metformin HCl",
+        },
+      ],
+    });
+
+  await prisma.prescription.deleteMany({ where: { patientId: patient.id } });
+  await prisma.prescription.create({
+    data: {
+      patientId: patient.id,
+      doctorId: doctor.id,
+      pharmacyId: pharmacyProfile.id,
+      medication: "Lisinopril 10mg",
+      dosage: "1 tablet daily",
+      status: "APPROVED",
+    },
+  });
+
+  await prisma.communityPost.deleteMany({});
+  await prisma.communityPost.createMany({
+    data: [
+      {
+        authorId: patient.id,
+        title: "Tips for home blood pressure monitoring",
+        body: "I log readings every morning before coffee — sharing what worked for me.",
+        topic: "hypertension",
+        likeCount: 5,
+      },
+      {
+        authorId: doctor.id,
+        title: "When to seek urgent care for fever",
+        body: "Persistent high fever over 39°C with confusion warrants immediate evaluation.",
+        topic: "fever",
+        likeCount: 12,
+      },
+    ],
+  });
+
+  await prisma.invoice.deleteMany({ where: { userId: patient.id } });
+  await prisma.invoice.createMany({
+    data: [
+      {
+        userId: patient.id,
+        amountYen: 5000,
+        description: "Telemedicine consultation — Dr. Sato",
+        status: "OPEN",
+      },
+      {
+        userId: patient.id,
+        amountYen: 1000,
+        description: "MedCare Individual subscription",
+        status: "PAID",
+        paidAt: new Date(),
+        providerRef: "mock_seed_paid",
+      },
+    ],
+  });
+
+  const existingTele = await prisma.telemedicineSession.count();
+  if (existingTele === 0) {
+    await prisma.telemedicineSession.create({
+      data: {
+        hostId: doctor.id,
+        patientId: patient.id,
+        roomUrl: `https://meet.jit.si/medcare-seed-demo`,
+        provider: "mock",
+        status: "scheduled",
+        recordingConsent: true,
+      },
+    });
+  }
+
+  await prisma.appointment.deleteMany({ where: { patientId: patient.id } });
+  await prisma.appointment.create({
+    data: {
+      patientId: patient.id,
+      doctorId: doctor.id,
+      type: "VIDEO",
+      status: "BOOKED",
+      scheduledAt: new Date(Date.now() + 86400000 * 3),
+      notes: "Follow-up hypertension check",
+    },
+  });
+
+  await prisma.supportTicket.deleteMany({});
+  await prisma.supportTicket.create({
+    data: {
+      userId: patient.id,
+      name: patient.name,
+      email: patient.email,
+      subject: "Billing question",
+      body: "Can I get a receipt for my last subscription payment?",
+      status: "open",
     },
   });
 
@@ -410,6 +575,7 @@ async function main() {
   console.log("  nurse@medcare.local     / Nurse!2026");
   console.log("  hospital@medcare.local  / Hospital!2026");
   console.log("  company@medcare.local   / Company!2026");
+  console.log("  pharmacy@medcare.local  / Pharmacy!2026");
 }
 
 main()
